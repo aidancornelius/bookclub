@@ -1,10 +1,10 @@
-import Service, { service } from "@ember/service";
 import { tracked } from "@glimmer/tracking";
+import Service, { service } from "@ember/service";
 import {
-  fetchPricingTiers,
-  fetchSubscriptionStatus,
   createCheckoutSession,
   createPortalSession,
+  fetchPricingTiers,
+  fetchSubscriptionStatus,
 } from "../lib/bookclub-api";
 
 /**

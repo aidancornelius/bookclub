@@ -56,6 +56,17 @@ export default class BookclubPricingTiers extends Component {
   }
 
   /**
+   * Check if Stripe is not configured and manual mode is enabled
+   * @returns {boolean}
+   */
+  get showContactMessage() {
+    return (
+      this.pricingData?.error === "stripe_not_configured" &&
+      this.pricingData?.manual_mode === true
+    );
+  }
+
+  /**
    * Get the user's current tier ID
    * @returns {string|null}
    */
@@ -126,6 +137,23 @@ export default class BookclubPricingTiers extends Component {
       {{#if this.isLoadingData}}
         <div class="bookclub-pricing-tiers__loading">
           {{loadingSpinner}}
+        </div>
+      {{else if this.showContactMessage}}
+        <div class="bookclub-pricing-tiers__contact">
+          <div class="bookclub-pricing-tiers__contact-icon">
+            {{icon "envelope"}}
+          </div>
+          <h3>Get access to this publication</h3>
+          <p>
+            Payment processing is currently unavailable. Please contact the
+            site administrators to request access to this publication.
+          </p>
+          <DButton
+            @href="/about"
+            @label="bookclub.pricing.contact_us"
+            @icon="envelope"
+            class="btn-primary"
+          />
         </div>
       {{else if this.error}}
         <div class="bookclub-pricing-tiers__error">

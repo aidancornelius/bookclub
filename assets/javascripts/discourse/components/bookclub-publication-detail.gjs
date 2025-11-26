@@ -127,7 +127,10 @@ export default class BookclubPublicationDetail extends Component {
             @chapters={{@publication.chapters}}
           />
         {{else if (eq this.activeTab "stats")}}
-          <BookclubPublicationStats @publicationSlug={{@publication.slug}} />
+          <BookclubPublicationStats
+            @publicationSlug={{@publication.slug}}
+            @analytics={{@publication.analytics}}
+          />
         {{/if}}
       </div>
     </div>

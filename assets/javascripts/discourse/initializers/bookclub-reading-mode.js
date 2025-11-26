@@ -14,7 +14,7 @@ export default {
       return;
     }
 
-    withPluginApi("1.8.0", (api) => {
+    withPluginApi((api) => {
       // Add tracked properties to topics for publication data
       api.addTrackedPostProperties(
         "bookclub_content_type",

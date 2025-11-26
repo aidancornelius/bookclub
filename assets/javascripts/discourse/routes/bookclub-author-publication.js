@@ -1,5 +1,5 @@
-import DiscourseRoute from "discourse/routes/discourse";
 import { service } from "@ember/service";
+import DiscourseRoute from "discourse/routes/discourse";
 
 /**
  * Route for viewing a specific publication in the author dashboard
@@ -20,12 +20,20 @@ export default class BookclubAuthorPublicationRoute extends DiscourseRoute {
   }
 
   /**
-   * Load publication details
+   * Load publication details and analytics
    * @param {Object} params - Route parameters
    * @param {string} params.slug - Publication slug
-   * @returns {Promise<Object>} Publication details
+   * @returns {Promise<Object>} Publication details with analytics
    */
   async model(params) {
-    return this.bookclubAuthor.fetchPublication(params.slug);
+    const [publication, analytics] = await Promise.all([
+      this.bookclubAuthor.fetchPublication(params.slug),
+      this.bookclubAuthor.fetchAnalytics(params.slug),
+    ]);
+
+    return {
+      ...publication,
+      analytics,
+    };
   }
 }

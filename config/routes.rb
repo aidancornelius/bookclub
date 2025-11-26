@@ -17,12 +17,15 @@ Bookclub::Engine.routes.draw do
     get "/reading-progress" => "reading_progress#index"
     get "/reading-progress/:publication_slug" => "reading_progress#show"
     put "/reading-progress/:publication_slug" => "reading_progress#update"
+    get "/reading-streak" => "reading_progress#streak"
 
     # Pricing and subscriptions
     get "/publications/:slug/pricing" => "pricing#tiers"
     get "/publications/:slug/subscription" => "pricing#subscription_status"
     post "/publications/:slug/checkout" => "pricing#create_checkout"
     post "/publications/:slug/customer-portal" => "pricing#create_portal_session"
+    get "/publications/:slug/subscription-success" => "pricing#success"
+    get "/publications/:slug/subscription-cancelled" => "pricing#cancelled"
   end
 
   # Author dashboard

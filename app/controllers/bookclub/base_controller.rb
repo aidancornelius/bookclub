@@ -23,7 +23,7 @@ module Bookclub
       PUBLICATION_EDITOR_IDS,
       PUBLICATION_ACCESS_TIERS,
       PUBLICATION_FEEDBACK_SETTINGS,
-      PUBLICATION_IDENTIFIER,
+      PUBLICATION_IDENTIFIER
     ].freeze
 
     # Custom fields to preload for chapters
@@ -36,7 +36,7 @@ module Bookclub
       CHAPTER_SUMMARY,
       CHAPTER_WORD_COUNT,
       CHAPTER_CONTRIBUTORS,
-      CHAPTER_REVIEW_STATUS,
+      CHAPTER_REVIEW_STATUS
     ].freeze
 
     # Load all categories with custom fields preloaded to avoid N+1 queries
@@ -78,9 +78,9 @@ module Bookclub
       Topic
         .where(category_id: chapter.id)
         .joins(
-          "LEFT JOIN topic_custom_fields tcf ON tcf.topic_id = topics.id AND tcf.name = '#{CONTENT_TOPIC}'",
+          "LEFT JOIN topic_custom_fields tcf ON tcf.topic_id = topics.id AND tcf.name = '#{CONTENT_TOPIC}'"
         )
-        .where("tcf.value IN (?)", %w[t true])
+        .where('tcf.value IN (?)', %w[t true])
         .first
     end
 
@@ -90,40 +90,40 @@ module Bookclub
       Topic
         .where(category_id: chapter.id, visible: true)
         .joins(
-          "LEFT JOIN topic_custom_fields tcf ON tcf.topic_id = topics.id AND tcf.name = '#{CONTENT_TOPIC}'",
+          "LEFT JOIN topic_custom_fields tcf ON tcf.topic_id = topics.id AND tcf.name = '#{CONTENT_TOPIC}'"
         )
-        .where("tcf.value IS NULL OR tcf.value NOT IN (?)", %w[t true])
+        .where('tcf.value IS NULL OR tcf.value NOT IN (?)', %w[t true])
         .order(created_at: :desc)
     end
 
     def ensure_publication_access!(publication)
-      unless guardian.can_access_publication?(publication)
-        raise Discourse::InvalidAccess.new(
-                "You do not have access to this publication",
-                nil,
-                custom_message: "bookclub.errors.no_publication_access",
-              )
-      end
+      return if guardian.can_access_publication?(publication)
+
+      raise Discourse::InvalidAccess.new(
+        'You do not have access to this publication',
+        nil,
+        custom_message: 'bookclub.errors.no_publication_access'
+      )
     end
 
     def ensure_chapter_access!(chapter)
-      unless guardian.can_access_chapter?(chapter)
-        raise Discourse::InvalidAccess.new(
-                "You do not have access to this chapter",
-                nil,
-                custom_message: "bookclub.errors.no_chapter_access",
-              )
-      end
+      return if guardian.can_access_chapter?(chapter)
+
+      raise Discourse::InvalidAccess.new(
+        'You do not have access to this chapter',
+        nil,
+        custom_message: 'bookclub.errors.no_chapter_access'
+      )
     end
 
     def ensure_author_or_editor!(publication)
       unless guardian.is_publication_author?(publication) ||
-               guardian.is_publication_editor?(publication) || guardian.is_admin?
+             guardian.is_publication_editor?(publication) || guardian.is_admin?
         raise Discourse::InvalidAccess.new(
-                "You must be an author or editor to perform this action",
-                nil,
-                custom_message: "bookclub.errors.not_author_or_editor",
-              )
+          'You must be an author or editor to perform this action',
+          nil,
+          custom_message: 'bookclub.errors.not_author_or_editor'
+        )
       end
     end
   end

@@ -1,5 +1,5 @@
-import Service, { service } from "@ember/service";
 import { tracked } from "@glimmer/tracking";
+import Service, { service } from "@ember/service";
 import KeyValueStore from "discourse/lib/key-value-store";
 import ReadingProgressSync from "../lib/reading-progress-sync";
 import SwipeNavigation from "../lib/swipe-navigation";
@@ -23,6 +23,8 @@ export default class BookclubReadingService extends Service {
   @tracked currentPublication = null;
   @tracked currentContent = null;
   @tracked completedContentIds = [];
+  @tracked chaptersProgress = {};
+  @tracked readingStreak = null;
 
   store = new KeyValueStore(STORE_NAMESPACE);
   progressSync = null;
@@ -189,6 +191,18 @@ export default class BookclubReadingService extends Service {
    * @returns {string} Status: 'completed', 'in-progress', or 'unread'
    */
   getContentStatus(contentId, contentNumber) {
+    // Check per-chapter progress first
+    const chapterProgress = this.chaptersProgress[contentId];
+    if (chapterProgress) {
+      if (chapterProgress.completed) {
+        return "completed";
+      }
+      if (chapterProgress.scrollPosition > 0) {
+        return "in-progress";
+      }
+    }
+
+    // Fallback to legacy completed array
     if (this.isContentCompleted(contentId)) {
       return "completed";
     }
@@ -202,16 +216,6 @@ export default class BookclubReadingService extends Service {
       return "in-progress";
     }
 
-    // Check if it was the last read content from progress
-    if (
-      this.progressSync &&
-      this.currentPublication &&
-      (this.currentContent?.id === contentId ||
-        this.currentContent?.number === contentNumber)
-    ) {
-      return "in-progress";
-    }
-
     return "unread";
   }
 
@@ -219,7 +223,9 @@ export default class BookclubReadingService extends Service {
    * Navigate to the previous chapter
    */
   navigatePrevious() {
-    const prevLink = document.querySelector(".bookclub-chapter-nav__link--prev");
+    const prevLink = document.querySelector(
+      ".bookclub-chapter-nav__link--prev"
+    );
     if (prevLink) {
       prevLink.click();
     }
@@ -229,9 +235,26 @@ export default class BookclubReadingService extends Service {
    * Navigate to the next chapter
    */
   navigateNext() {
-    const nextLink = document.querySelector(".bookclub-chapter-nav__link--next");
+    const nextLink = document.querySelector(
+      ".bookclub-chapter-nav__link--next"
+    );
     if (nextLink) {
       nextLink.click();
+    }
+  }
+
+  /**
+   * Scroll to the discussion section
+   */
+  scrollToDiscussion() {
+    const discussionSection = document.querySelector(
+      ".bookclub-chapter-discussions"
+    );
+    if (discussionSection) {
+      discussionSection.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
     }
   }
 
@@ -280,6 +303,14 @@ export default class BookclubReadingService extends Service {
       // Update completed content IDs
       this.completedContentIds = progress.completed || [];
 
+      // Update per-chapter progress
+      this.chaptersProgress = progress.chapters || {};
+
+      // Load reading streak if user is logged in
+      if (this.currentUser) {
+        await this._loadReadingStreak();
+      }
+
       // Restore scroll position if returning to the same chapter
       if (
         this.currentContent &&
@@ -300,6 +331,25 @@ export default class BookclubReadingService extends Service {
   }
 
   /**
+   * Load reading streak data from server
+   * @private
+   */
+  async _loadReadingStreak() {
+    if (!this.currentUser) {
+      return;
+    }
+
+    try {
+      const { ajax } = await import("discourse/lib/ajax");
+      const response = await ajax("/bookclub/reading-streak");
+      this.readingStreak = response.streak;
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error("Failed to load reading streak:", error);
+    }
+  }
+
+  /**
    * Set up scroll tracking for progress bar
    * @private
    */
@@ -311,7 +361,10 @@ export default class BookclubReadingService extends Service {
       const scrollable = documentHeight - windowHeight;
 
       if (scrollable > 0) {
-        const progress = Math.min(100, Math.max(0, (scrollTop / scrollable) * 100));
+        const progress = Math.min(
+          100,
+          Math.max(0, (scrollTop / scrollable) * 100)
+        );
         this.updateScrollProgress(progress);
       }
     };
@@ -363,7 +416,7 @@ export default class BookclubReadingService extends Service {
           break;
         case "d":
           event.preventDefault();
-          this.toggleDarkMode();
+          this.scrollToDiscussion();
           break;
         case "n":
         case "ArrowRight":

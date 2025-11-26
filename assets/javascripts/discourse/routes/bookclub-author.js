@@ -1,5 +1,5 @@
-import DiscourseRoute from "discourse/routes/discourse";
 import { service } from "@ember/service";
+import DiscourseRoute from "discourse/routes/discourse";
 
 /**
  * Route for the bookclub author dashboard

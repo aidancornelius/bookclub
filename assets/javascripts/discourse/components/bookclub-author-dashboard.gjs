@@ -12,7 +12,6 @@ import { eq } from "discourse/truth-helpers";
  * @component BookclubAuthorDashboard
  */
 export default class BookclubAuthorDashboard extends Component {
-  @service bookclubAuthor;
   @service router;
 
   @tracked publications = this.args.publications || [];

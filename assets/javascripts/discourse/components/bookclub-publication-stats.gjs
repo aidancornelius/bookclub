@@ -2,24 +2,29 @@ import Component from "@glimmer/component";
 import { tracked } from "@glimmer/tracking";
 import { action } from "@ember/object";
 import { service } from "@ember/service";
-import avatar from "discourse/helpers/bound-avatar-template";
 import icon from "discourse/helpers/d-icon";
 import { formatDate } from "discourse/lib/formatter";
+import BookclubActivityMetrics from "./bookclub-activity-metrics";
+import BookclubReaderProgress from "./bookclub-reader-progress";
 
 /**
  * Publication statistics component showing engagement metrics
  * @component BookclubPublicationStats
+ * @param {string} this.args.publicationSlug - Publication slug
+ * @param {Object} this.args.analytics - Pre-loaded analytics data (optional)
  */
 export default class BookclubPublicationStats extends Component {
   @service bookclubAuthor;
 
-  @tracked analytics = null;
-  @tracked loading = true;
+  @tracked analytics = this.args.analytics || null;
+  @tracked loading = !this.args.analytics;
   @tracked error = null;
 
   constructor() {
     super(...arguments);
-    this.loadAnalytics();
+    if (!this.args.analytics) {
+      this.loadAnalytics();
+    }
   }
 
   /**
@@ -33,7 +38,7 @@ export default class BookclubPublicationStats extends Component {
       this.analytics = await this.bookclubAuthor.fetchAnalytics(
         this.args.publicationSlug
       );
-    } catch (error) {
+    } catch {
       this.error = "Failed to load analytics";
     } finally {
       this.loading = false;
@@ -117,9 +122,7 @@ export default class BookclubPublicationStats extends Component {
                 </div>
                 <div class="bookclub-stat-card__content">
                   <div class="bookclub-stat-card__value">
-                    {{this.formatNumber
-                      this.analytics.engagement.total_comments
-                    }}
+                    {{this.formatNumber this.analytics.engagement.total_posts}}
                   </div>
                   <div class="bookclub-stat-card__label">
                     Comments
@@ -134,11 +137,11 @@ export default class BookclubPublicationStats extends Component {
                 <div class="bookclub-stat-card__content">
                   <div class="bookclub-stat-card__value">
                     {{this.formatNumber
-                      this.analytics.engagement.unique_commenters
+                      this.analytics.engagement.unique_participants
                     }}
                   </div>
                   <div class="bookclub-stat-card__label">
-                    Unique commenters
+                    Unique participants
                   </div>
                 </div>
               </div>
@@ -161,57 +164,18 @@ export default class BookclubPublicationStats extends Component {
             </div>
           </div>
 
-          {{! Recent Comments }}
-          {{#if this.analytics.engagement.recent_comments.length}}
-            <div class="bookclub-stats-section">
-              <h3 class="bookclub-stats-section__title">
-                {{icon "comments"}}
-                Recent comments
-              </h3>
+          {{! Activity Metrics }}
+          <div class="bookclub-stats-section">
+            <BookclubActivityMetrics @analytics={{this.analytics}} />
+          </div>
 
-              <div class="bookclub-recent-comments">
-                {{#each this.analytics.engagement.recent_comments as |comment|}}
-                  <div class="bookclub-comment-item">
-                    <div class="bookclub-comment-item__avatar">
-                      <img
-                        src={{this.getAvatarUrl comment.user}}
-                        alt={{comment.user.username}}
-                        class="avatar"
-                      />
-                    </div>
+          {{! Reader Progress }}
+          <div class="bookclub-stats-section">
+            <BookclubReaderProgress @analytics={{this.analytics}} />
+          </div>
 
-                    <div class="bookclub-comment-item__content">
-                      <div class="bookclub-comment-item__header">
-                        <span class="bookclub-comment-item__username">
-                          {{comment.user.username}}
-                        </span>
-                        <span class="bookclub-comment-item__separator">
-                          on
-                        </span>
-                        <a
-                          href="/t/{{comment.topic_id}}/{{comment.id}}"
-                          class="bookclub-comment-item__topic"
-                        >
-                          {{comment.topic_title}}
-                        </a>
-                      </div>
-
-                      <div class="bookclub-comment-item__excerpt">
-                        {{comment.excerpt}}
-                      </div>
-
-                      <div class="bookclub-comment-item__meta">
-                        {{this.formatDate comment.created_at}}
-                      </div>
-                    </div>
-                  </div>
-                {{/each}}
-              </div>
-            </div>
-          {{/if}}
-
-          {{! Views by Content }}
-          {{#if this.analytics.views.by_content.length}}
+          {{! Views by Chapter }}
+          {{#if this.analytics.views.by_chapter.length}}
             <div class="bookclub-stats-section">
               <h3 class="bookclub-stats-section__title">
                 {{icon "chart-bar"}}
@@ -219,19 +183,19 @@ export default class BookclubPublicationStats extends Component {
               </h3>
 
               <div class="bookclub-content-views">
-                {{#each this.analytics.views.by_content as |content|}}
+                {{#each this.analytics.views.by_chapter as |chapter|}}
                   <div class="bookclub-content-views__item">
                     <div class="bookclub-content-views__title">
-                      {{content.title}}
+                      {{chapter.title}}
                     </div>
                     <div class="bookclub-content-views__bar">
                       <div
                         class="bookclub-content-views__bar-fill"
-                        style="width: {{content.views_percentage}}%"
+                        style="width: 100%"
                       ></div>
                     </div>
                     <div class="bookclub-content-views__value">
-                      {{this.formatNumber content.views}}
+                      {{this.formatNumber chapter.views}}
                       views
                     </div>
                   </div>

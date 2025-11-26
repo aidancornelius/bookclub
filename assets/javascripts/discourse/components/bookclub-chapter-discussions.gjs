@@ -58,17 +58,24 @@ export default class BookclubChapterDiscussions extends Component {
   }
 
   <template>
-    <section class="bookclub-chapter-discussions">
-      <header class="discussions-header">
-        <h2>
+    <section class="bookclub-chapter-discussions" id="chapter-discussions">
+      <header class="bookclub-chapter-discussions__header">
+        <div class="bookclub-chapter-discussions__title-group">
           {{icon "comments"}}
-          Discussions
+          <h2 class="bookclub-chapter-discussions__title">
+            Chapter discussion
+          </h2>
           {{#if this.topicCount}}
-            <span class="discussion-count">({{this.topicCount}})</span>
+            <span
+              class="bookclub-chapter-discussions__count"
+            >({{this.topicCount}})</span>
           {{/if}}
-        </h2>
+        </div>
         {{#if this.chapterId}}
-          <a href={{this.categoryUrl}} class="view-all-link">
+          <a
+            href={{this.categoryUrl}}
+            class="bookclub-chapter-discussions__view-all"
+          >
             View all
             {{icon "arrow-right"}}
           </a>
@@ -76,27 +83,34 @@ export default class BookclubChapterDiscussions extends Component {
       </header>
 
       {{#if this.hasDiscussions}}
-        <ul class="discussions-list">
+        <ul class="bookclub-chapter-discussions__list">
           {{#each this.discussionTopics as |topic|}}
-            <li class="discussion-item">
-              <div class="discussion-avatar">
+            <li class="bookclub-chapter-discussions__item">
+              <div class="bookclub-chapter-discussions__avatar">
                 <img
                   src={{topic.user.avatar_url}}
                   alt={{topic.user.username}}
                   class="avatar"
                 />
               </div>
-              <div class="discussion-content">
-                <a href={{this.getTopicUrl topic}} class="discussion-title">
+              <div class="bookclub-chapter-discussions__content">
+                <a
+                  href={{this.getTopicUrl topic}}
+                  class="bookclub-chapter-discussions__topic-title"
+                >
                   {{topic.title}}
                 </a>
-                <div class="discussion-meta">
-                  <span class="discussion-author">{{topic.user.name}}</span>
-                  <span class="discussion-stats">
+                <div class="bookclub-chapter-discussions__meta">
+                  <span
+                    class="bookclub-chapter-discussions__author"
+                  >{{topic.user.name}}</span>
+                  <span class="bookclub-chapter-discussions__separator">•</span>
+                  <span class="bookclub-chapter-discussions__stats">
                     {{topic.posts_count}}
                     {{if (eq topic.posts_count 1) "reply" "replies"}}
                   </span>
-                  <span class="discussion-time">
+                  <span class="bookclub-chapter-discussions__separator">•</span>
+                  <span class="bookclub-chapter-discussions__time">
                     {{this.formatRelativeTime topic.last_posted_at}}
                   </span>
                 </div>
@@ -105,10 +119,19 @@ export default class BookclubChapterDiscussions extends Component {
           {{/each}}
         </ul>
       {{else}}
-        <div class="discussions-empty">
-          <p>No discussions yet. Be the first to start a conversation!</p>
+        <div class="bookclub-chapter-discussions__empty">
+          <div class="bookclub-chapter-discussions__empty-icon">
+            {{icon "far-comments"}}
+          </div>
+          <p class="bookclub-chapter-discussions__empty-text">
+            No discussions yet. Be the first to start a conversation about this
+            chapter!
+          </p>
           {{#if this.chapterId}}
-            <a href={{this.categoryUrl}} class="btn btn-primary">
+            <a
+              href={{this.categoryUrl}}
+              class="bookclub-chapter-discussions__start-btn"
+            >
               {{icon "plus"}}
               Start a discussion
             </a>

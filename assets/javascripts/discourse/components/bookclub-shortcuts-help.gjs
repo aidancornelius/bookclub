@@ -14,8 +14,8 @@ export default class BookclubShortcutsHelp extends Component {
     { key: "n / →", action: "Next chapter" },
     { key: "p / ←", action: "Previous chapter" },
     { key: "t", action: "Toggle contents" },
+    { key: "d", action: "Jump to discussions" },
     { key: "s", action: "Toggle settings" },
-    { key: "d", action: "Toggle dark mode" },
     { key: "?", action: "Show shortcuts" },
     { key: "Esc", action: "Close panel" },
   ];
@@ -37,9 +37,11 @@ export default class BookclubShortcutsHelp extends Component {
   }
 
   <template>
+    {{! template-lint-disable no-invalid-interactive no-nested-interactive }}
     <div
       class="bookclub-shortcuts-help
         {{if this.isVisible 'bookclub-shortcuts-help--visible'}}"
+      role="button"
       {{on "click" this.handleOverlayClick}}
     >
       <div class="bookclub-shortcuts-help__panel">

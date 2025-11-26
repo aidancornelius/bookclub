@@ -1,6 +1,9 @@
 import Component from "@glimmer/component";
+import { tracked } from "@glimmer/tracking";
 import { on } from "@ember/modifier";
 import { action } from "@ember/object";
+import didInsert from "@ember/render-modifiers/modifiers/did-insert";
+import willDestroy from "@ember/render-modifiers/modifiers/will-destroy";
 import { service } from "@ember/service";
 import icon from "discourse/helpers/d-icon";
 
@@ -8,16 +11,21 @@ import icon from "discourse/helpers/d-icon";
  * Mobile bottom navigation bar component
  * Fixed bottom bar with touch-friendly navigation controls
  * Only visible on mobile devices
+ * Hides when scrolling down, shows when scrolling up
  * @component BookclubMobileNav
- * @param {boolean} hasPrevious - Whether there is a previous chapter
- * @param {boolean} hasNext - Whether there is a next chapter
+ * @param {Object} navigation - Navigation data with previous and next
  */
 export default class BookclubMobileNav extends Component {
   @service bookclubReading;
   @service capabilities;
 
+  @tracked isHidden = false;
+
+  lastScrollY = 0;
+  scrollThreshold = 50;
+  scrollHandler = null;
+
   get isVisible() {
-    // Only show on mobile/tablet
     return this.capabilities.touch;
   }
 
@@ -27,6 +35,43 @@ export default class BookclubMobileNav extends Component {
 
   get isSettingsActive() {
     return this.bookclubReading.isSettingsOpen;
+  }
+
+  get hasPrevious() {
+    return this.args.navigation?.previous != null;
+  }
+
+  get hasNext() {
+    return this.args.navigation?.next != null;
+  }
+
+  @action
+  setupScrollBehaviour() {
+    this.scrollHandler = () => {
+      const currentScrollY = window.scrollY;
+
+      if (Math.abs(currentScrollY - this.lastScrollY) < this.scrollThreshold) {
+        return;
+      }
+
+      if (currentScrollY > this.lastScrollY && currentScrollY > 100) {
+        this.isHidden = true;
+      } else {
+        this.isHidden = false;
+      }
+
+      this.lastScrollY = currentScrollY;
+    };
+
+    window.addEventListener("scroll", this.scrollHandler, { passive: true });
+  }
+
+  @action
+  teardownScrollBehaviour() {
+    if (this.scrollHandler) {
+      window.removeEventListener("scroll", this.scrollHandler);
+      this.scrollHandler = null;
+    }
   }
 
   @action
@@ -53,9 +98,25 @@ export default class BookclubMobileNav extends Component {
     this.bookclubReading.navigateNext();
   }
 
+  @action
+  handleDiscussClick(event) {
+    event.preventDefault();
+    const discussionsEl = document.querySelector(
+      ".bookclub-chapter-discussions"
+    );
+    if (discussionsEl) {
+      discussionsEl.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }
+
   <template>
     {{#if this.isVisible}}
-      <nav class="bookclub-mobile-nav">
+      <nav
+        class="bookclub-mobile-nav
+          {{if this.isHidden 'bookclub-mobile-nav--hidden'}}"
+        {{didInsert this.setupScrollBehaviour}}
+        {{willDestroy this.teardownScrollBehaviour}}
+      >
         <button
           type="button"
           class="bookclub-mobile-nav__btn
@@ -64,7 +125,39 @@ export default class BookclubMobileNav extends Component {
           aria-label="Table of contents"
         >
           {{icon "list-ul"}}
-          <span>Contents</span>
+          <span>TOC</span>
+        </button>
+
+        <button
+          type="button"
+          class="bookclub-mobile-nav__btn"
+          {{on "click" this.handlePreviousClick}}
+          disabled={{unless this.hasPrevious "disabled"}}
+          aria-label="Previous chapter"
+        >
+          {{icon "chevron-left"}}
+          <span>Prev</span>
+        </button>
+
+        <button
+          type="button"
+          class="bookclub-mobile-nav__btn"
+          {{on "click" this.handleNextClick}}
+          disabled={{unless this.hasNext "disabled"}}
+          aria-label="Next chapter"
+        >
+          {{icon "chevron-right"}}
+          <span>Next</span>
+        </button>
+
+        <button
+          type="button"
+          class="bookclub-mobile-nav__btn"
+          {{on "click" this.handleDiscussClick}}
+          aria-label="Jump to discussions"
+        >
+          {{icon "comments"}}
+          <span>Discuss</span>
         </button>
 
         <button
@@ -76,28 +169,6 @@ export default class BookclubMobileNav extends Component {
         >
           {{icon "gear"}}
           <span>Settings</span>
-        </button>
-
-        <button
-          type="button"
-          class="bookclub-mobile-nav__btn"
-          {{on "click" this.handlePreviousClick}}
-          disabled={{unless @hasPrevious "disabled"}}
-          aria-label="Previous chapter"
-        >
-          {{icon "chevron-left"}}
-          <span>Previous</span>
-        </button>
-
-        <button
-          type="button"
-          class="bookclub-mobile-nav__btn"
-          {{on "click" this.handleNextClick}}
-          disabled={{unless @hasNext "disabled"}}
-          aria-label="Next chapter"
-        >
-          {{icon "chevron-right"}}
-          <span>Next</span>
         </button>
       </nav>
     {{/if}}

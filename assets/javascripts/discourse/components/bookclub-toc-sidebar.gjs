@@ -6,6 +6,7 @@ import { service } from "@ember/service";
 import { htmlSafe } from "@ember/template";
 import icon from "discourse/helpers/d-icon";
 import { eq, gt } from "discourse/truth-helpers";
+import BookclubReadingStreak from "./bookclub-reading-streak";
 
 /**
  * Table of contents sidebar component
@@ -88,8 +89,17 @@ export default class BookclubTocSidebar extends Component {
       case "in-progress":
         return "circle-half-stroke";
       default:
-        return "circle";
+        return null; // No icon for unread
     }
+  }
+
+  /**
+   * Get CSS class for status
+   * @param {string} status - Status: 'completed', 'in-progress', or 'unread'
+   * @returns {string} CSS class name
+   */
+  getStatusClass(status) {
+    return `bookclub-toc__link--${status}`;
   }
 
   <template>
@@ -114,6 +124,7 @@ export default class BookclubTocSidebar extends Component {
           {{icon "xmark"}}
         </button>
       </header>
+      <BookclubReadingStreak />
       {{#if (gt this.completionPercentage 0)}}
         <div class="bookclub-toc-sidebar__progress">
           <div class="bookclub-toc-sidebar__progress-bar">
@@ -133,7 +144,8 @@ export default class BookclubTocSidebar extends Component {
             <li class="bookclub-toc__item">
               <a
                 href="/book/{{this.publicationSlug}}/{{item.number}}"
-                class="bookclub-toc__link bookclub-toc__link--{{item.status}}
+                class="bookclub-toc__link
+                  {{this.getStatusClass item.status}}
                   {{unless item.has_access 'bookclub-toc__link--locked'}}
                   {{if
                     (eq item.number @currentNumber)
@@ -141,10 +153,14 @@ export default class BookclubTocSidebar extends Component {
                   }}"
                 {{on "click" (fn this.goToChapter item)}}
               >
-                <span class="bookclub-toc__status-icon">
-                  {{icon (this.getStatusIcon item.status)}}
-                </span>
-                <span class="bookclub-toc__number">{{item.number}}</span>
+                {{#if (this.getStatusIcon item.status)}}
+                  <span
+                    class="bookclub-toc__status-icon bookclub-toc__status-icon--{{item.status}}"
+                  >
+                    {{icon (this.getStatusIcon item.status)}}
+                  </span>
+                {{/if}}
+                <span class="bookclub-toc__number">{{item.number}}.</span>
                 <span class="bookclub-toc__content-title">{{item.title}}</span>
                 {{#unless item.has_access}}
                   <span class="bookclub-toc__lock-icon">{{icon "lock"}}</span>

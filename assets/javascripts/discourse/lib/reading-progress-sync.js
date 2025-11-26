@@ -1,7 +1,7 @@
 import { ajax } from "discourse/lib/ajax";
-import { debounce } from "discourse-common/utils/decorators";
+import { debounce } from "discourse/lib/decorators";
 
-const DEBOUNCE_MS = 2000;
+const DEBOUNCE_MS = 30000; // 30 seconds as per requirements
 const COMPLETION_THRESHOLD = 0.95; // 95% scrolled = completed
 
 /**
@@ -77,6 +77,34 @@ export default class ReadingProgressSync {
         console.warn("Failed to save progress to server:", error);
       });
     }
+  }
+
+  /**
+   * Get progress for specific chapter from stored data
+   * @param {number} chapterId - Chapter ID to get progress for
+   * @returns {Object|null} Chapter progress or null
+   */
+  getChapterProgress(chapterId) {
+    const progress = this._loadFromLocalStorage();
+    const chapters = progress.chapters || {};
+    return chapters[chapterId] || null;
+  }
+
+  /**
+   * Check if chapter is in-progress (has scroll position but not completed)
+   * @param {number} chapterId - Chapter ID to check
+   * @returns {boolean} Whether chapter is in-progress
+   */
+  isChapterInProgress(chapterId) {
+    const chapterProgress = this.getChapterProgress(chapterId);
+    if (!chapterProgress) {
+      return false;
+    }
+    return (
+      chapterProgress.scrollPosition > 0 &&
+      chapterProgress.scrollPosition < COMPLETION_THRESHOLD * 100 &&
+      !chapterProgress.completed
+    );
   }
 
   /**
@@ -166,6 +194,7 @@ export default class ReadingProgressSync {
       contentNumber: null,
       scrollPosition: 0,
       scrollOffset: 0,
+      chapters: {},
     };
   }
 
@@ -177,6 +206,22 @@ export default class ReadingProgressSync {
    */
   _saveToLocalStorage(progress, markCompleted) {
     const existing = this._loadFromLocalStorage();
+
+    // Initialise chapters object if it doesn't exist
+    if (!existing.chapters) {
+      existing.chapters = {};
+    }
+
+    // Update per-chapter progress
+    const chapterId = this.contentId.toString();
+    existing.chapters[chapterId] = {
+      scrollPosition: progress.scrollPosition,
+      scrollOffset: progress.scrollOffset,
+      readAt: progress.lastReadAt,
+      completed: markCompleted || existing.chapters[chapterId]?.completed || false,
+      completedAt:
+        markCompleted ? progress.lastReadAt : existing.chapters[chapterId]?.completedAt,
+    };
 
     const updated = {
       ...existing,
@@ -212,6 +257,21 @@ export default class ReadingProgressSync {
       }
     );
 
+    // Transform per-chapter progress from server format
+    const chapters = {};
+    if (response.progress?.chapters) {
+      Object.keys(response.progress.chapters).forEach((chapterId) => {
+        const chapterData = response.progress.chapters[chapterId];
+        chapters[chapterId] = {
+          scrollPosition: chapterData.scroll_position || 0,
+          scrollOffset: 0, // Server doesn't store pixel offset
+          readAt: chapterData.read_at,
+          completed: chapterData.completed || false,
+          completedAt: chapterData.completed_at,
+        };
+      });
+    }
+
     return {
       contentId: response.progress?.current_content_id,
       contentNumber: response.progress?.current_content_number,
@@ -219,6 +279,7 @@ export default class ReadingProgressSync {
       scrollOffset: 0, // Server doesn't store pixel offset
       completed: response.progress?.completed || [],
       lastReadAt: response.progress?.last_read_at,
+      chapters,
     };
   }
 
@@ -234,6 +295,7 @@ export default class ReadingProgressSync {
       current_content_id: progress.contentId,
       current_content_number: progress.contentNumber,
       scroll_position: progress.scrollPosition,
+      content_id: this.contentId, // For per-chapter tracking
     };
 
     if (markCompleted) {
@@ -264,6 +326,12 @@ export default class ReadingProgressSync {
     // Use whichever has the most recent read time
     const useServer = serverDate > localDate;
 
+    // Merge per-chapter progress
+    const mergedChapters = this._mergeChapters(
+      localProgress.chapters || {},
+      serverProgress.chapters || {}
+    );
+
     return {
       contentId: useServer
         ? serverProgress.contentId
@@ -280,6 +348,7 @@ export default class ReadingProgressSync {
         serverProgress.completed || []
       ),
       lastReadAt: useServer ? serverProgress.lastReadAt : localProgress.lastReadAt,
+      chapters: mergedChapters,
     };
   }
 
@@ -293,5 +362,51 @@ export default class ReadingProgressSync {
   _mergeCompleted(localCompleted, serverCompleted) {
     const merged = new Set([...localCompleted, ...serverCompleted]);
     return Array.from(merged);
+  }
+
+  /**
+   * Merge per-chapter progress from local and server
+   * @private
+   * @param {Object} localChapters - Local chapters progress
+   * @param {Object} serverChapters - Server chapters progress
+   * @returns {Object} Merged chapters progress
+   */
+  _mergeChapters(localChapters, serverChapters) {
+    const merged = { ...localChapters };
+
+    // Merge server chapters, preferring most recent
+    Object.keys(serverChapters).forEach((chapterId) => {
+      const serverChapter = serverChapters[chapterId];
+      const localChapter = localChapters[chapterId];
+
+      if (!localChapter) {
+        merged[chapterId] = serverChapter;
+        return;
+      }
+
+      const localDate = localChapter.readAt
+        ? new Date(localChapter.readAt)
+        : new Date(0);
+      const serverDate = serverChapter.readAt
+        ? new Date(serverChapter.readAt)
+        : new Date(0);
+
+      // Use most recent chapter progress
+      if (serverDate > localDate) {
+        merged[chapterId] = {
+          ...serverChapter,
+          scrollOffset: localChapter.scrollOffset, // Preserve local scroll offset
+        };
+      } else {
+        // Keep local but merge completed status (once completed, always completed)
+        merged[chapterId] = {
+          ...localChapter,
+          completed: localChapter.completed || serverChapter.completed,
+          completedAt: localChapter.completedAt || serverChapter.completedAt,
+        };
+      }
+    });
+
+    return merged;
   }
 }

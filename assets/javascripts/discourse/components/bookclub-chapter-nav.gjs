@@ -43,7 +43,12 @@ export default class BookclubChapterNav extends Component {
           >{{this.previous.title}}</span>
         </a>
       {{else}}
-        <div class="bookclub-chapter-nav__spacer"></div>
+        <div
+          class="bookclub-chapter-nav__link bookclub-chapter-nav__link--prev bookclub-chapter-nav__link--disabled"
+        >
+          <span class="bookclub-chapter-nav__label">Previous</span>
+          <span class="bookclub-chapter-nav__title">No previous chapter</span>
+        </div>
       {{/if}}
 
       {{#if this.hasNext}}
@@ -54,6 +59,13 @@ export default class BookclubChapterNav extends Component {
           <span class="bookclub-chapter-nav__label">Next</span>
           <span class="bookclub-chapter-nav__title">{{this.next.title}}</span>
         </a>
+      {{else}}
+        <div
+          class="bookclub-chapter-nav__link bookclub-chapter-nav__link--next bookclub-chapter-nav__link--disabled"
+        >
+          <span class="bookclub-chapter-nav__label">Next</span>
+          <span class="bookclub-chapter-nav__title">End of publication</span>
+        </div>
       {{/if}}
     </nav>
   </template>

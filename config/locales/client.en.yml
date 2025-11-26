@@ -136,6 +136,17 @@ en:
         words: "words"
         views: "views"
         comments: "comments"
+        activity: "Activity"
+        recent_comments: "Recent comments"
+        unanswered_questions: "Unanswered questions"
+        all_questions_answered: "All questions answered! Great work."
+        no_activity: "No recent activity yet."
+        reader_progress: "Reader progress"
+        total_readers: "Total readers"
+        completed_readers: "Completed"
+        average_progress: "Average progress"
+        progress_by_chapter: "Progress by chapter"
+        no_reader_data: "No reader data yet. Progress will appear as readers engage with your content."
 
       stats:
         title: "Statistics"

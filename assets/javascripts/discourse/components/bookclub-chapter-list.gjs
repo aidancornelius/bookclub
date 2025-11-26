@@ -203,12 +203,24 @@ export default class BookclubChapterList extends Component {
   }
 
   /**
-   * Open chapter editor modal
+   * Open chapter editor modal with defaults for new chapter
    */
   @action
   openChapterEditor() {
     this.editingChapter = null;
     this.showChapterEditor = true;
+  }
+
+  /**
+   * Get next chapter number
+   * @returns {number} Next available chapter number
+   */
+  get nextChapterNumber() {
+    if (!this.contents.length) {
+      return 1;
+    }
+    const maxNumber = Math.max(...this.contents.map((c) => c.number || 0));
+    return maxNumber + 1;
   }
 
   /**
@@ -388,6 +400,7 @@ export default class BookclubChapterList extends Component {
           <BookclubChapterEditor
             @publicationSlug={{@publicationSlug}}
             @chapter={{this.editingChapter}}
+            @nextNumber={{this.nextChapterNumber}}
             @onSave={{this.handleChapterSaved}}
             @onCancel={{this.closeChapterEditor}}
           />

@@ -14,7 +14,13 @@ import { popupAjaxError } from "discourse/lib/ajax-error";
 export function fetchPricingTiers(publicationSlug) {
   return ajax(`/bookclub/publications/${publicationSlug}/pricing.json`, {
     type: "GET",
-  }).catch(popupAjaxError);
+  }).catch((error) => {
+    // Handle 503 (service unavailable) for Stripe not configured gracefully
+    if (error.jqXHR?.status === 503) {
+      return error.jqXHR.responseJSON || error;
+    }
+    return popupAjaxError(error);
+  });
 }
 
 /**

@@ -4,9 +4,7 @@ module Bookclub
   module SubscriptionHooks
     extend ActiveSupport::Concern
 
-    included do
-      after_action :process_bookclub_subscription, only: [:create]
-    end
+    included { after_action :process_bookclub_subscription, only: [:create] }
 
     private
 
@@ -27,28 +25,34 @@ module Bookclub
         customer.subscription.created
         customer.subscription.updated
         customer.subscription.deleted
+        invoice.payment_failed
+        charge.refunded
       ].include?(event_type)
     end
 
     def process_bookclub_event(event, event_type)
       case event_type
-      when "checkout.session.completed"
+      when 'checkout.session.completed'
         handle_checkout_completed(event)
-      when "customer.subscription.created", "customer.subscription.updated"
+      when 'customer.subscription.created', 'customer.subscription.updated'
         handle_subscription_created_or_updated(event)
-      when "customer.subscription.deleted"
+      when 'customer.subscription.deleted'
         handle_subscription_deleted(event)
+      when 'invoice.payment_failed'
+        handle_invoice_payment_failed(event)
+      when 'charge.refunded'
+        handle_charge_refunded(event)
       end
     end
 
     def handle_checkout_completed(event)
       checkout_session = event[:data][:object]
-      return unless checkout_session[:status] == "complete"
+      return unless checkout_session[:status] == 'complete'
 
       email = checkout_session[:customer_email]
       return unless email
 
-      user = User.find_by_username_or_email(email)
+      user = User.find_by(username_or_email: email)
       return unless user
 
       subscription_id = checkout_session[:subscription]
@@ -57,10 +61,13 @@ module Bookclub
       return unless product_id
 
       invoke_subscription_integration(
-        event_type: "checkout.completed",
+        event_type: 'checkout.completed',
         user: user,
         product_id: product_id,
-        subscription_data: { id: subscription_id, status: "active" },
+        subscription_data: {
+          id: subscription_id,
+          status: 'active'
+        }
       )
     end
 
@@ -78,10 +85,10 @@ module Bookclub
       return unless user
 
       invoke_subscription_integration(
-        event_type: "subscription.updated",
+        event_type: 'subscription.updated',
         user: user,
         product_id: product_id,
-        subscription_data: subscription,
+        subscription_data: subscription
       )
     end
 
@@ -96,10 +103,80 @@ module Bookclub
       return unless user
 
       invoke_subscription_integration(
-        event_type: "subscription.deleted",
+        event_type: 'subscription.deleted',
         user: user,
         product_id: product_id,
-        subscription_data: subscription,
+        subscription_data: subscription
+      )
+    end
+
+    def handle_invoice_payment_failed(event)
+      invoice = event[:data][:object]
+      customer_id = invoice[:customer]
+      subscription_id = invoice[:subscription]
+
+      return unless customer_id && subscription_id
+
+      user = find_user_by_customer_id(customer_id)
+      return unless user
+
+      # Fetch subscription to get product info
+      subscription = fetch_stripe_subscription(subscription_id)
+      return unless subscription
+
+      product_id = subscription.dig(:plan, :product)
+      return unless product_id
+
+      invoke_subscription_integration(
+        event_type: 'payment.failed',
+        user: user,
+        product_id: product_id,
+        subscription_data: {
+          id: subscription_id,
+          status: subscription[:status],
+          invoice_id: invoice[:id],
+          amount_due: invoice[:amount_due],
+          attempt_count: invoice[:attempt_count]
+        }
+      )
+    end
+
+    def handle_charge_refunded(event)
+      charge = event[:data][:object]
+      customer_id = charge[:customer]
+
+      return unless customer_id
+
+      user = find_user_by_customer_id(customer_id)
+      return unless user
+
+      # Extract product info from charge metadata or invoice
+      invoice_id = charge[:invoice]
+      return unless invoice_id
+
+      invoice = fetch_stripe_invoice(invoice_id)
+      return unless invoice
+
+      subscription_id = invoice[:subscription]
+      return unless subscription_id
+
+      subscription = fetch_stripe_subscription(subscription_id)
+      return unless subscription
+
+      product_id = subscription.dig(:plan, :product)
+      return unless product_id
+
+      invoke_subscription_integration(
+        event_type: 'charge.refunded',
+        user: user,
+        product_id: product_id,
+        subscription_data: {
+          id: subscription_id,
+          status: subscription[:status],
+          charge_id: charge[:id],
+          amount_refunded: charge[:amount_refunded],
+          refund_reason: charge.dig(:refunds, :data, 0, :reason)
+        }
       )
     end
 
@@ -109,12 +186,12 @@ module Bookclub
           event_type: event_type,
           user: user,
           product_id: product_id,
-          subscription_data: subscription_data,
+          subscription_data: subscription_data
         )
 
       if result.failure?
         Rails.logger.warn(
-          "[Bookclub] Subscription integration failed for user #{user.id}: #{result.inspect_steps}",
+          "[Bookclub] Subscription integration failed for user #{user.id}: #{result.inspect_steps}"
         )
       end
     rescue StandardError => e
@@ -127,9 +204,7 @@ module Bookclub
       item = line_items[:data].first
       item&.dig(:price, :product)
     rescue Stripe::StripeError => e
-      Rails.logger.error(
-        "[Bookclub] Error fetching line items for checkout session: #{e.message}",
-      )
+      Rails.logger.error("[Bookclub] Error fetching line items for checkout session: #{e.message}")
       nil
     end
 
@@ -144,6 +219,22 @@ module Bookclub
 
     def extract_event_type(event)
       event&.fetch(:type, nil)
+    end
+
+    def fetch_stripe_subscription(subscription_id)
+      Stripe::Subscription.retrieve(subscription_id)
+    rescue Stripe::StripeError => e
+      Rails.logger.error(
+        "[Bookclub] Error fetching Stripe subscription #{subscription_id}: #{e.message}"
+      )
+      nil
+    end
+
+    def fetch_stripe_invoice(invoice_id)
+      Stripe::Invoice.retrieve(invoice_id)
+    rescue Stripe::StripeError => e
+      Rails.logger.error("[Bookclub] Error fetching Stripe invoice #{invoice_id}: #{e.message}")
+      nil
     end
   end
 end

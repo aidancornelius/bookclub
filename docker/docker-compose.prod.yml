@@ -1,0 +1,203 @@
+# Production Docker Compose configuration for Bookclub plugin
+# This configuration is designed for production deployment
+#
+# IMPORTANT:
+# - This uses the official Discourse Docker setup as a base
+# - Ensure you have created a .env file with all required secrets
+# - Review and customize for your specific production environment
+# - Do NOT use this in development (use docker-compose.dev.yml instead)
+
+version: '3.8'
+
+services:
+  # PostgreSQL database
+  postgres:
+    image: postgres:15-alpine
+    container_name: bookclub_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-discourse}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      POSTGRES_DB: ${POSTGRES_DB:-discourse}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backups/postgres:/backups
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-discourse}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - discourse_backend
+
+  # Redis for caching and Sidekiq
+  redis:
+    image: redis:7-alpine
+    container_name: bookclub_redis
+    restart: always
+    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - discourse_backend
+
+  # Discourse application
+  discourse:
+    image: discourse/discourse:${DISCOURSE_VERSION:-latest}
+    container_name: bookclub_discourse
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      # Discourse core configuration
+      DISCOURSE_HOSTNAME: ${DISCOURSE_HOSTNAME:?DISCOURSE_HOSTNAME is required}
+      DISCOURSE_DEVELOPER_EMAILS: ${DISCOURSE_DEVELOPER_EMAILS:?DISCOURSE_DEVELOPER_EMAILS is required}
+
+      # Database
+      DISCOURSE_DB_HOST: postgres
+      DISCOURSE_DB_PORT: 5432
+      DISCOURSE_DB_NAME: ${POSTGRES_DB:-discourse}
+      DISCOURSE_DB_USERNAME: ${POSTGRES_USER:-discourse}
+      DISCOURSE_DB_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+
+      # Redis
+      DISCOURSE_REDIS_HOST: redis
+      DISCOURSE_REDIS_PORT: 6379
+
+      # SMTP (required for production)
+      DISCOURSE_SMTP_ADDRESS: ${SMTP_ADDRESS:?SMTP_ADDRESS is required}
+      DISCOURSE_SMTP_PORT: ${SMTP_PORT:-587}
+      DISCOURSE_SMTP_USER_NAME: ${SMTP_USER_NAME:?SMTP_USER_NAME is required}
+      DISCOURSE_SMTP_PASSWORD: ${SMTP_PASSWORD:?SMTP_PASSWORD is required}
+      DISCOURSE_SMTP_ENABLE_START_TLS: ${SMTP_ENABLE_START_TLS:-true}
+      DISCOURSE_SMTP_AUTHENTICATION: ${SMTP_AUTHENTICATION:-login}
+      DISCOURSE_SMTP_DOMAIN: ${SMTP_DOMAIN:-}
+
+      # Security
+      DISCOURSE_SECRET_KEY_BASE: ${SECRET_KEY_BASE:?SECRET_KEY_BASE is required}
+
+      # CDN and asset configuration (optional)
+      DISCOURSE_CDN_URL: ${CDN_URL:-}
+      DISCOURSE_S3_ENABLED: ${S3_ENABLED:-false}
+      DISCOURSE_S3_BUCKET: ${S3_BUCKET:-}
+      DISCOURSE_S3_REGION: ${S3_REGION:-}
+      DISCOURSE_S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:-}
+      DISCOURSE_S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:-}
+
+      # Plugin configuration
+      BOOKCLUB_ENABLED: "true"
+      BOOKCLUB_STRIPE_INTEGRATION: ${BOOKCLUB_STRIPE_INTEGRATION:-false}
+
+      # Performance tuning
+      UNICORN_WORKERS: ${UNICORN_WORKERS:-4}
+      UNICORN_SIDEKIQS: ${UNICORN_SIDEKIQS:-1}
+      RUBY_GLOBAL_METHOD_CACHE_SIZE: 131072
+
+      # Rails environment
+      RAILS_ENV: production
+      RACK_ENV: production
+
+    volumes:
+      # Mount the Bookclub plugin
+      - ${BOOKCLUB_PLUGIN_PATH:?BOOKCLUB_PLUGIN_PATH is required}:/var/www/discourse/plugins/bookclub:ro
+
+      # Persistent data
+      - discourse_shared:/shared
+      - discourse_log:/var/www/discourse/log
+
+      # Optional: mount other plugins
+      # - ./plugins/other-plugin:/var/www/discourse/plugins/other-plugin:ro
+
+    networks:
+      - discourse_backend
+      - discourse_frontend
+
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3000/srv/status || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
+
+    # Expose port to nginx proxy only (not to host)
+    expose:
+      - "3000"
+
+  # Nginx reverse proxy with SSL termination
+  nginx:
+    image: nginx:alpine
+    container_name: bookclub_nginx
+    restart: always
+    depends_on:
+      - discourse
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+      - ./nginx/snippets:/etc/nginx/snippets:ro
+
+      # Certbot certificates
+      - certbot_certs:/etc/letsencrypt:ro
+      - certbot_www:/var/www/certbot:ro
+
+      # Nginx logs
+      - nginx_logs:/var/log/nginx
+
+      # Static files from Discourse (for direct serving)
+      - discourse_shared:/var/www/discourse/public/shared:ro
+
+    networks:
+      - discourse_frontend
+
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Certbot for SSL certificate management
+  certbot:
+    image: certbot/certbot
+    container_name: bookclub_certbot
+    volumes:
+      - certbot_certs:/etc/letsencrypt
+      - certbot_www:/var/www/certbot
+    # Run certbot renew periodically (use cron or systemd timer on host instead)
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+    networks:
+      - discourse_frontend
+
+networks:
+  discourse_backend:
+    name: bookclub_backend
+    driver: bridge
+  discourse_frontend:
+    name: bookclub_frontend
+    driver: bridge
+
+volumes:
+  postgres_data:
+    name: bookclub_postgres_data
+  redis_data:
+    name: bookclub_redis_data
+  discourse_shared:
+    name: bookclub_discourse_shared
+  discourse_log:
+    name: bookclub_discourse_log
+  certbot_certs:
+    name: bookclub_certbot_certs
+  certbot_www:
+    name: bookclub_certbot_www
+  nginx_logs:
+    name: bookclub_nginx_logs

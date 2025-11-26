@@ -3,7 +3,6 @@
 
 // Reading mode is activated when viewing a topic in a publication category
 // The body gets .bookclub-reading-mode class
-
 .bookclub-reading-mode {
   // Override site background
   background: var(--bookclub-page-bg) !important;
@@ -118,7 +117,9 @@
       border-radius: 6px;
       color: var(--bookclub-text-muted);
       cursor: pointer;
-      transition: background 0.15s ease, color 0.15s ease;
+      transition:
+        background 0.15s ease,
+        color 0.15s ease;
 
       &:hover {
         background: var(--bookclub-accent-soft);
@@ -181,7 +182,7 @@
       line-height: var(--bookclub-line-height-tight);
       margin: 0;
 
-      @media (max-width: 600px) {
+      @media (width <= 600px) {
         font-size: 2rem;
       }
     }
@@ -208,7 +209,7 @@
       margin: 0 0 var(--bookclub-spacing-lg);
       text-align: left;
       hyphens: auto;
-      -webkit-hyphens: auto;
+      hyphens: auto;
     }
 
     // First paragraph - no indent, drop cap optional
@@ -434,6 +435,16 @@
       &:hover .bookclub-chapter-nav__title {
         color: var(--bookclub-link-color);
       }
+
+      &--disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+        pointer-events: none;
+
+        .bookclub-chapter-nav__title {
+          color: var(--bookclub-text-muted);
+        }
+      }
     }
 
     &__label {
@@ -453,7 +464,213 @@
     }
   }
 
-  // Discussion section
+  // Discuss this chapter button
+  .bookclub-discuss-button {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--bookclub-spacing-sm);
+    padding: var(--bookclub-spacing-md) var(--bookclub-spacing-xl);
+    margin: var(--bookclub-spacing-xl) 0;
+    background: var(--bookclub-accent-soft);
+    border: 1px solid var(--bookclub-border-subtle);
+    border-radius: var(--bookclub-radius-pill);
+    font-family: var(--bookclub-font-sans);
+    font-size: var(--bookclub-font-size-base);
+    color: var(--bookclub-text-color);
+    cursor: pointer;
+    transition: all 0.2s ease;
+
+    &:hover {
+      background: var(--bookclub-link-color);
+      border-color: var(--bookclub-link-color);
+      color: #fff;
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgb(0, 0, 0, 0.1);
+    }
+
+    svg {
+      width: 18px;
+      height: 18px;
+    }
+  }
+
+  // Chapter discussions
+  .bookclub-chapter-discussions {
+    margin-top: var(--bookclub-spacing-xxl);
+    padding-top: var(--bookclub-spacing-xxl);
+    border-top: 2px solid var(--bookclub-border-strong);
+    scroll-margin-top: 80px;
+
+    &__header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: var(--bookclub-spacing-xl);
+    }
+
+    &__title-group {
+      display: flex;
+      align-items: center;
+      gap: var(--bookclub-spacing-sm);
+
+      svg {
+        width: 24px;
+        height: 24px;
+        color: var(--bookclub-text-muted);
+      }
+    }
+
+    &__title {
+      font-family: var(--bookclub-font-serif);
+      font-size: 1.5rem;
+      font-weight: 400;
+      color: var(--bookclub-text-color);
+      margin: 0;
+    }
+
+    &__count {
+      font-family: var(--bookclub-font-sans);
+      font-size: var(--bookclub-font-size-small);
+      color: var(--bookclub-text-muted);
+      margin-left: var(--bookclub-spacing-xs);
+    }
+
+    &__view-all {
+      display: flex;
+      align-items: center;
+      gap: var(--bookclub-spacing-xs);
+      font-family: var(--bookclub-font-sans);
+      font-size: var(--bookclub-font-size-small);
+      color: var(--bookclub-link-color);
+      text-decoration: none;
+
+      &:hover {
+        color: var(--bookclub-link-hover);
+      }
+
+      svg {
+        width: 14px;
+        height: 14px;
+      }
+    }
+
+    &__list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+
+    &__item {
+      display: flex;
+      gap: var(--bookclub-spacing-md);
+      padding: var(--bookclub-spacing-lg) 0;
+      border-bottom: 1px solid var(--bookclub-border-subtle);
+
+      &:last-child {
+        border-bottom: none;
+      }
+    }
+
+    &__avatar {
+      flex-shrink: 0;
+
+      img {
+        width: 44px;
+        height: 44px;
+        border-radius: 50%;
+      }
+    }
+
+    &__content {
+      flex: 1;
+      min-width: 0;
+    }
+
+    &__topic-title {
+      font-family: var(--bookclub-font-sans);
+      font-size: var(--bookclub-font-size-large);
+      font-weight: 500;
+      color: var(--bookclub-text-color);
+      text-decoration: none;
+      display: block;
+      margin-bottom: var(--bookclub-spacing-xs);
+
+      &:hover {
+        color: var(--bookclub-link-color);
+      }
+    }
+
+    &__meta {
+      display: flex;
+      align-items: center;
+      gap: var(--bookclub-spacing-sm);
+      font-family: var(--bookclub-font-sans);
+      font-size: var(--bookclub-font-size-small);
+      color: var(--bookclub-text-soft);
+      flex-wrap: wrap;
+    }
+
+    &__separator {
+      color: var(--bookclub-border-strong);
+    }
+
+    &__author,
+    &__stats,
+    &__time {
+      white-space: nowrap;
+    }
+
+    &__empty {
+      text-align: center;
+      padding: var(--bookclub-spacing-xxl) var(--bookclub-spacing-lg);
+    }
+
+    &__empty-icon {
+      margin: 0 auto var(--bookclub-spacing-lg);
+      color: var(--bookclub-text-soft);
+      opacity: 0.5;
+
+      svg {
+        width: 64px;
+        height: 64px;
+      }
+    }
+
+    &__empty-text {
+      font-family: var(--bookclub-font-sans);
+      font-size: var(--bookclub-font-size-base);
+      color: var(--bookclub-text-muted);
+      margin: 0 0 var(--bookclub-spacing-lg);
+    }
+
+    &__start-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--bookclub-spacing-sm);
+      padding: var(--bookclub-spacing-md) var(--bookclub-spacing-xl);
+      background: var(--bookclub-link-color);
+      color: #fff;
+      font-family: var(--bookclub-font-sans);
+      font-size: var(--bookclub-font-size-base);
+      font-weight: 500;
+      border: none;
+      border-radius: var(--bookclub-radius-pill);
+      text-decoration: none;
+      cursor: pointer;
+
+      &:hover {
+        background: var(--bookclub-link-hover);
+        color: #fff;
+      }
+
+      svg {
+        width: 16px;
+        height: 16px;
+      }
+    }
+  }
+
+  // Discussion section (legacy - keep for compatibility)
   .bookclub-discussion {
     margin-top: var(--bookclub-spacing-xxl);
     padding-top: var(--bookclub-spacing-xxl);
@@ -647,10 +864,12 @@
 .bookclub-toc-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgb(0, 0, 0, 0.5);
   opacity: 0;
   visibility: hidden;
-  transition: opacity 0.3s ease, visibility 0.3s ease;
+  transition:
+    opacity 0.3s ease,
+    visibility 0.3s ease;
   z-index: 1001;
 
   &--visible {
@@ -672,7 +891,10 @@
   opacity: 0;
   visibility: hidden;
   transform: translateY(-10px);
-  transition: opacity 0.2s ease, visibility 0.2s ease, transform 0.2s ease;
+  transition:
+    opacity 0.2s ease,
+    visibility 0.2s ease,
+    transform 0.2s ease;
   z-index: 1003;
 
   &--open {
@@ -713,7 +935,9 @@
     color: var(--bookclub-text-muted);
     cursor: pointer;
     font-family: var(--bookclub-font-serif);
-    transition: background 0.15s ease, border-color 0.15s ease;
+    transition:
+      background 0.15s ease,
+      border-color 0.15s ease;
 
     &:hover {
       border-color: var(--bookclub-border-strong);
@@ -728,12 +952,15 @@
     &--small {
       font-size: 14px;
     }
+
     &--medium {
       font-size: 16px;
     }
+
     &--large {
       font-size: 18px;
     }
+
     &--x-large {
       font-size: 20px;
     }
@@ -827,10 +1054,12 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(0, 0, 0, 0.7);
+  background: rgb(0, 0, 0, 0.7);
   opacity: 0;
   visibility: hidden;
-  transition: opacity 0.2s ease, visibility 0.2s ease;
+  transition:
+    opacity 0.2s ease,
+    visibility 0.2s ease;
   z-index: 2000;
 
   &--visible {

@@ -9,6 +9,11 @@ import ComboBox from "discourse/select-kit/components/combo-box";
 /**
  * Chapter editor modal for creating and editing chapters
  * @component BookclubChapterEditor
+ * @param {string} this.args.publicationSlug - Publication slug
+ * @param {Object} this.args.chapter - Existing chapter to edit (optional)
+ * @param {number} this.args.nextNumber - Next chapter number for new chapters
+ * @param {Function} this.args.onSave - Callback when chapter is saved
+ * @param {Function} this.args.onCancel - Callback when editing is cancelled
  */
 export default class BookclubChapterEditor extends Component {
   @service bookclubAuthor;
@@ -28,7 +33,7 @@ export default class BookclubChapterEditor extends Component {
     { id: "review", name: "Review" },
   ];
 
-  accessLevelOptions = [
+accessLevelOptions = [
     { id: "free", name: "Free" },
     { id: "community", name: "Community" },
     { id: "reader", name: "Reader" },
@@ -36,6 +41,20 @@ export default class BookclubChapterEditor extends Component {
     { id: "supporter", name: "Supporter" },
     { id: "patron", name: "Patron" },
   ];
+
+/**
+   * Get placeholder title based on content type and number
+   * @returns {string} Placeholder title
+   */
+  get placeholderTitle() {
+    const number = this.args.nextNumber || "";
+    const type = this.contentType === "article" ? "Article" : "Chapter";
+    return `${type} ${number}`;
+  }
+
+  
+
+  
 
   /**
    * Update title
@@ -89,7 +108,9 @@ export default class BookclubChapterEditor extends Component {
   validate() {
     this.errors = [];
 
-    if (!this.title || this.title.trim().length === 0) {
+    // Title is optional for new chapters (server will generate default)
+    // but required when editing existing chapters
+    if (this.args.chapter && (!this.title || this.title.trim().length === 0)) {
       this.errors.push("Title is required");
     }
 
@@ -114,7 +135,7 @@ export default class BookclubChapterEditor extends Component {
 
     try {
       const data = {
-        title: this.title.trim(),
+        title: this.title.trim() || undefined, // Server will generate default if undefined
         body: this.body.trim(),
         content_type: this.contentType,
         access_level: this.accessLevel,
@@ -160,13 +181,17 @@ export default class BookclubChapterEditor extends Component {
         <div class="bookclub-chapter-editor__field">
           <label class="bookclub-chapter-editor__label">
             Title
-            <span class="required">*</span>
+            {{#unless this.args.chapter}}
+              <span class="bookclub-chapter-editor__hint">
+                (Leave blank for default: "{{this.placeholderTitle}}")
+              </span>
+            {{/unless}}
           </label>
           <input
             type="text"
             value={{this.title}}
             {{on "input" this.updateTitle}}
-            placeholder="Enter chapter title"
+            placeholder={{this.placeholderTitle}}
             class="bookclub-chapter-editor__input"
           />
         </div>

@@ -6,7 +6,7 @@ module Bookclub
 
     def show
       respond_to do |format|
-        format.html { render "default/empty" }
+        format.html { render 'default/empty' }
         format.json do
           publication = find_publication_category(params[:slug])
           raise Discourse::NotFound unless publication
@@ -17,9 +17,9 @@ module Bookclub
 
           unless guardian.can_access_chapter?(chapter)
             render json: {
-                     error: "access_denied",
+                     error: 'access_denied',
                      paywall: true,
-                     access_tiers: publication.custom_fields[PUBLICATION_ACCESS_TIERS],
+                     access_tiers: publication.custom_fields[PUBLICATION_ACCESS_TIERS]
                    },
                    status: :forbidden
             return
@@ -34,7 +34,7 @@ module Bookclub
     end
 
     def update_progress
-      return render json: { error: "not_logged_in" }, status: :unauthorized unless current_user
+      return render json: { error: 'not_logged_in' }, status: :unauthorized unless current_user
 
       publication = find_publication_category(params[:slug])
       raise Discourse::NotFound unless publication
@@ -47,14 +47,14 @@ module Bookclub
       pub_slug = publication.custom_fields[PUBLICATION_SLUG]
 
       progress[pub_slug] ||= {}
-      progress[pub_slug]["current_chapter_id"] = chapter.id
-      progress[pub_slug]["current_chapter_number"] = chapter_number.to_i
-      progress[pub_slug]["scroll_position"] = params[:scroll_position] if params[:scroll_position]
-      progress[pub_slug]["last_read_at"] = Time.current.iso8601
+      progress[pub_slug]['current_chapter_id'] = chapter.id
+      progress[pub_slug]['current_chapter_number'] = chapter_number.to_i
+      progress[pub_slug]['scroll_position'] = params[:scroll_position] if params[:scroll_position]
+      progress[pub_slug]['last_read_at'] = Time.current.iso8601
 
-      progress[pub_slug]["completed"] ||= []
-      if params[:completed] && !progress[pub_slug]["completed"].include?(chapter.id)
-        progress[pub_slug]["completed"] << chapter.id
+      progress[pub_slug]['completed'] ||= []
+      if params[:completed] && !progress[pub_slug]['completed'].include?(chapter.id)
+        progress[pub_slug]['completed'] << chapter.id
       end
 
       current_user.custom_fields[READING_PROGRESS] = progress
@@ -75,7 +75,7 @@ module Bookclub
         navigation: build_navigation(publication, chapter),
         reading_progress: current_user ? load_reading_progress(publication) : nil,
         discussions: serialize_discussions(chapter, discussion_topics),
-        feedback_settings: publication.custom_fields[PUBLICATION_FEEDBACK_SETTINGS],
+        feedback_settings: publication.custom_fields[PUBLICATION_FEEDBACK_SETTINGS]
       }
     end
 
@@ -85,7 +85,7 @@ module Bookclub
         name: publication.name,
         slug: publication.custom_fields[PUBLICATION_SLUG],
         type: publication.custom_fields[PUBLICATION_TYPE],
-        toc: build_toc(publication),
+        toc: build_toc(publication)
       }
     end
 
@@ -97,7 +97,7 @@ module Bookclub
         title: chapter.name,
         slug: chapter.slug,
         number: chapter.custom_fields[CHAPTER_NUMBER]&.to_i,
-        type: chapter.custom_fields[CHAPTER_TYPE] || "chapter",
+        type: chapter.custom_fields[CHAPTER_TYPE] || 'chapter',
         word_count: chapter.custom_fields[CHAPTER_WORD_COUNT]&.to_i,
         summary: chapter.custom_fields[CHAPTER_SUMMARY],
         contributors: chapter.custom_fields[CHAPTER_CONTRIBUTORS],
@@ -106,7 +106,7 @@ module Bookclub
         body_raw: guardian.is_publication_author?(publication) ? first_post.raw : nil,
         content_topic_id: content_topic.id,
         created_at: chapter.created_at,
-        updated_at: first_post.updated_at,
+        updated_at: first_post.updated_at
       }
     end
 
@@ -127,10 +127,10 @@ module Bookclub
                 id: topic.user.id,
                 username: topic.user.username,
                 name: topic.user.name,
-                avatar_url: topic.user.avatar_template_url.gsub("{size}", "45"),
-              },
+                avatar_url: topic.user.avatar_template_url.gsub('{size}', '45')
+              }
             }
-          end,
+          end
       }
     end
 
@@ -145,12 +145,12 @@ module Bookclub
       {
         current: {
           number: current_chapter.custom_fields[CHAPTER_NUMBER]&.to_i,
-          title: current_chapter.name,
+          title: current_chapter.name
         },
         previous: prev_chapter ? navigation_item(publication, prev_chapter) : nil,
         next: next_chapter ? navigation_item(publication, next_chapter) : nil,
         total_count: chapters.length,
-        current_index: current_index ? current_index + 1 : nil,
+        current_index: current_index ? current_index + 1 : nil
       }
     end
 
@@ -162,9 +162,9 @@ module Bookclub
         id: chapter.id,
         title: chapter.name,
         number: chapter_number&.to_i,
-        type: chapter.custom_fields[CHAPTER_TYPE] || "chapter",
+        type: chapter.custom_fields[CHAPTER_TYPE] || 'chapter',
         url: "/book/#{pub_slug}/#{chapter_number}",
-        has_access: guardian.can_access_chapter?(chapter),
+        has_access: guardian.can_access_chapter?(chapter)
       }
     end
 
@@ -174,15 +174,15 @@ module Bookclub
 
       chapters.map do |chapter|
         access_level = chapter.custom_fields[CHAPTER_ACCESS_LEVEL]
-        is_free = access_level.blank? || access_level == "free"
+        is_free = access_level.blank? || access_level == 'free'
         has_chapter_access = has_publication_access && guardian.can_access_chapter?(chapter)
 
         {
           id: chapter.id,
           title: chapter.name,
           number: chapter.custom_fields[CHAPTER_NUMBER]&.to_i,
-          type: chapter.custom_fields[CHAPTER_TYPE] || "chapter",
-          has_access: is_free || has_chapter_access,
+          type: chapter.custom_fields[CHAPTER_TYPE] || 'chapter',
+          has_access: is_free || has_chapter_access
         }
       end
     end
@@ -201,14 +201,14 @@ module Bookclub
       chapters = find_chapters(publication)
       is_author_or_editor =
         guardian.is_publication_author?(publication) ||
-          guardian.is_publication_editor?(publication) || guardian.is_admin?
+        guardian.is_publication_editor?(publication) || guardian.is_admin?
 
       return chapters if is_author_or_editor
 
       # Filter to only published chapters for regular users
       chapters.select do |chapter|
         published = chapter.custom_fields[CHAPTER_PUBLISHED]
-        published == true || published == "true" || published == "t"
+        [true, 'true', 't'].include?(published)
       end
     end
 

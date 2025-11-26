@@ -4,6 +4,7 @@ import bodyClass from "discourse/helpers/body-class";
 import icon from "discourse/helpers/d-icon";
 import BookclubChapterDiscussions from "discourse/plugins/bookclub/discourse/components/bookclub-chapter-discussions";
 import BookclubChapterNav from "discourse/plugins/bookclub/discourse/components/bookclub-chapter-nav";
+import BookclubDiscussButton from "discourse/plugins/bookclub/discourse/components/bookclub-discuss-button";
 import BookclubMobileNav from "discourse/plugins/bookclub/discourse/components/bookclub-mobile-nav";
 import BookclubPricingTiers from "discourse/plugins/bookclub/discourse/components/bookclub-pricing-tiers";
 import BookclubProgressBar from "discourse/plugins/bookclub/discourse/components/bookclub-progress-bar";
@@ -59,6 +60,10 @@ export default <template>
         <div class="bookclub-content__body">
           {{htmlSafe @controller.chapter.body_html}}
         </div>
+
+        {{#if @controller.discussions}}
+          <BookclubDiscussButton />
+        {{/if}}
       </article>
 
       {{#if @controller.discussions}}
