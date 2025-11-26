@@ -1,0 +1,49 @@
+{
+  "name": "Bookclub",
+  "about_url": null,
+  "license_url": null,
+  "component": false,
+  "theme_version": "1.0.0",
+  "minimum_discourse_version": "3.0.0",
+  "authors": "Bookclub",
+  "color_schemes": {
+    "Bookclub Light": {
+      "primary": "2a241c",
+      "secondary": "fdf7ee",
+      "tertiary": "b25a27",
+      "quaternary": "8c431a",
+      "header_background": "fdf7ee",
+      "header_primary": "2a241c",
+      "highlight": "f0e0c6",
+      "danger": "a94442",
+      "success": "5a8a5a",
+      "love": "b25a27"
+    },
+    "Bookclub Dark": {
+      "primary": "efe5d6",
+      "secondary": "050505",
+      "tertiary": "e08c4a",
+      "quaternary": "f2a666",
+      "header_background": "0a0908",
+      "header_primary": "efe5d6",
+      "highlight": "26201a",
+      "danger": "d9534f",
+      "success": "7ab27a",
+      "love": "e08c4a"
+    }
+  },
+  "modifiers": {
+    "svg_icons": [
+      "book-open",
+      "bookmark",
+      "list-ul",
+      "sun",
+      "moon",
+      "text-height",
+      "book",
+      "feather-alt",
+      "glasses",
+      "scroll"
+    ]
+  }
+}

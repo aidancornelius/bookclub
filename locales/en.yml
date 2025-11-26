@@ -1,0 +1,39 @@
+en:
+  theme_metadata:
+    description: "A book-first reading platform theme for Discourse. Transforms forums into an elegant publishing experience where community discussion sits just below the surface of a focused reading interface."
+
+  theme_settings:
+    bookclub_show_library_in_header: "Show library link in header"
+    bookclub_header_style: "Header style"
+    bookclub_homepage_mode: "Homepage display mode"
+    bookclub_show_community_nav: "Show community navigation"
+    bookclub_serif_headings: "Use serif typography for headings"
+    bookclub_warm_backgrounds: "Apply warm paper-like backgrounds"
+
+  js:
+    bookclub:
+      navigation:
+        library: "Library"
+        reading: "Reading"
+        community: "Community"
+        all_publications: "All publications"
+        continue_reading: "Continue reading"
+        view_all: "View all"
+        start_reading: "Start reading"
+
+      homepage:
+        publications: "Publications"
+        recent_discussions: "Recent discussions"
+        chapters: "chapters"
+        welcome: "Welcome"
+        no_publications: "A reading platform for thoughtful discussion."
+        admin_note: "Create your first publication by enabling a category as a publication in the admin settings."
+
+      publication_types:
+        book: "Book"
+        journal: "Journal"
+        anthology: "Anthology"
+        series: "Series"
+
+      sidebar:
+        library: "Library"

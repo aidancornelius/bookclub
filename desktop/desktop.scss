@@ -1,0 +1,368 @@
+// Bookclub Theme - Desktop Styles
+// Enhanced reading experience for larger screens
+
+// ==========================================================================
+// HEADER - Desktop refinements
+// ==========================================================================
+
+.d-header {
+  height: 64px;
+
+  .wrap {
+    display: flex;
+    align-items: center;
+    height: 100%;
+  }
+
+  .contents {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    gap: var(--bookclub-space-4);
+  }
+
+  // Logo area - give it breathing room
+  .title {
+    flex-shrink: 0;
+    order: 1;
+
+    a {
+      display: flex;
+      align-items: center;
+      gap: var(--bookclub-space-3);
+    }
+
+    img.logo-big {
+      max-height: 36px;
+    }
+  }
+
+  // Header nav - position between logo and icons
+  .bookclub-header-nav {
+    order: 2;
+    margin-left: auto; // Push nav and panel to the right
+  }
+
+  // Icons panel - keep at the end
+  .panel {
+    order: 3;
+    display: flex;
+    align-items: center;
+    gap: var(--bookclub-space-2);
+  }
+}
+
+// ==========================================================================
+// SIDEBAR - Desktop enhancements
+// ==========================================================================
+
+.sidebar-wrapper {
+  width: var(--d-sidebar-width);
+}
+
+
+// ==========================================================================
+// DISCOVERY/HOMEPAGE - Desktop layout
+// ==========================================================================
+
+// Hero section for library landing
+.bookclub-hero {
+  background: linear-gradient(
+    135deg,
+    var(--bookclub-page-muted) 0%,
+    var(--bookclub-page-bg) 100%
+  );
+  border-bottom: 1px solid var(--bookclub-border-subtle);
+  padding: var(--bookclub-space-16) var(--bookclub-space-8);
+  margin: calc(var(--bookclub-space-8) * -1) calc(var(--bookclub-space-8) * -1)
+    var(--bookclub-space-8);
+  text-align: center;
+
+  h1 {
+    font-family: var(--bookclub-font-serif);
+    font-size: var(--bookclub-font-size-4xl);
+    font-weight: 500;
+    margin-bottom: var(--bookclub-space-4);
+    color: var(--bookclub-text-color);
+  }
+
+  p {
+    font-size: var(--bookclub-font-size-lg);
+    color: var(--bookclub-text-muted);
+    max-width: 600px;
+    margin: 0 auto var(--bookclub-space-8);
+    line-height: var(--bookclub-line-height-relaxed);
+  }
+}
+
+// Publication grid on homepage
+.bookclub-publications-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: var(--bookclub-space-6);
+  margin-bottom: var(--bookclub-space-12);
+}
+
+.bookclub-publication-card {
+  background: var(--bookclub-page-elevated);
+  border: 1px solid var(--bookclub-border-subtle);
+  border-radius: var(--bookclub-radius-xl);
+  overflow: hidden;
+  transition: all var(--bookclub-transition-normal);
+  display: flex;
+  flex-direction: column;
+
+  &:hover {
+    box-shadow: var(--bookclub-shadow-medium);
+    transform: translateY(-4px);
+    border-color: var(--bookclub-border-medium);
+  }
+
+  .publication-cover {
+    aspect-ratio: 3 / 4;
+    background: var(--bookclub-page-muted);
+    background-size: cover;
+    background-position: center;
+    position: relative;
+
+    &::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(
+        to bottom,
+        transparent 50%,
+        rgba(0, 0, 0, 0.3) 100%
+      );
+    }
+  }
+
+  .publication-info {
+    padding: var(--bookclub-space-5);
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .publication-type {
+    font-family: var(--bookclub-font-sans);
+    font-size: var(--bookclub-font-size-xs);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--bookclub-link-color);
+    margin-bottom: var(--bookclub-space-2);
+  }
+
+  .publication-title {
+    font-family: var(--bookclub-font-serif);
+    font-size: var(--bookclub-font-size-xl);
+    font-weight: 500;
+    color: var(--bookclub-text-color);
+    margin-bottom: var(--bookclub-space-2);
+    line-height: var(--bookclub-line-height-tight);
+  }
+
+  .publication-author {
+    font-size: var(--bookclub-font-size-sm);
+    color: var(--bookclub-text-muted);
+    margin-bottom: var(--bookclub-space-3);
+  }
+
+  .publication-description {
+    font-size: var(--bookclub-font-size-sm);
+    color: var(--bookclub-text-muted);
+    line-height: var(--bookclub-line-height-relaxed);
+    flex: 1;
+
+    // Limit to 3 lines
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .publication-meta {
+    margin-top: var(--bookclub-space-4);
+    padding-top: var(--bookclub-space-4);
+    border-top: 1px solid var(--bookclub-border-subtle);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: var(--bookclub-font-size-xs);
+    color: var(--bookclub-text-soft);
+  }
+}
+
+// Section dividers
+.bookclub-section {
+  margin-bottom: var(--bookclub-space-12);
+
+  .section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: var(--bookclub-space-6);
+    padding-bottom: var(--bookclub-space-4);
+    border-bottom: 1px solid var(--bookclub-border-subtle);
+
+    h2 {
+      font-family: var(--bookclub-font-serif);
+      font-size: var(--bookclub-font-size-2xl);
+      font-weight: 500;
+      margin: 0;
+    }
+
+    .section-link {
+      font-size: var(--bookclub-font-size-sm);
+      color: var(--bookclub-link-color);
+
+      &:hover {
+        color: var(--bookclub-link-hover);
+      }
+    }
+  }
+}
+
+// ==========================================================================
+// TOPIC LIST - Desktop table of contents feel
+// ==========================================================================
+
+// Let the table use its natural layout - don't override with grid
+
+// ==========================================================================
+// TOPIC VIEW - Desktop reading experience
+// ==========================================================================
+
+.topic-area {
+  max-width: var(--bookclub-content-width);
+  margin: 0 auto;
+  padding: 0 var(--bookclub-space-8);
+}
+
+// Chapter header styling
+#topic-title {
+  margin-bottom: var(--bookclub-space-8);
+  padding-bottom: var(--bookclub-space-6);
+  border-bottom: 1px solid var(--bookclub-border-subtle);
+
+  h1 {
+    font-family: var(--bookclub-font-serif);
+    font-size: var(--bookclub-font-size-4xl);
+    font-weight: 500;
+    line-height: var(--bookclub-line-height-tight);
+    margin-bottom: var(--bookclub-space-4);
+  }
+
+  .topic-category,
+  .topic-header-extra {
+    font-size: var(--bookclub-font-size-sm);
+    color: var(--bookclub-text-muted);
+  }
+}
+
+// Post stream - reading layout
+.post-stream {
+  .topic-post {
+    max-width: var(--bookclub-reading-width);
+
+    // First post (main content) centred and prominent
+    &:first-child {
+      margin-bottom: var(--bookclub-space-12);
+      padding-bottom: var(--bookclub-space-12);
+      border-bottom: 2px solid var(--bookclub-border-medium);
+
+      .cooked {
+        font-size: var(--bookclub-font-size-lg);
+
+        // First paragraph as a lead/intro
+        > p:first-child {
+          font-size: var(--bookclub-font-size-xl);
+          color: var(--bookclub-text-muted);
+          line-height: var(--bookclub-line-height-loose);
+        }
+      }
+    }
+
+    // Replies styled as discussion/comments
+    &:not(:first-child) {
+      .cooked {
+        font-size: var(--bookclub-font-size-base);
+      }
+    }
+  }
+}
+
+// ==========================================================================
+// TIMELINE - Subtle progress indicator
+// ==========================================================================
+
+.topic-navigation {
+  .timeline-container {
+    background: var(--bookclub-page-muted);
+    border-radius: var(--bookclub-radius-lg);
+    padding: var(--bookclub-space-4);
+
+    .timeline-scrollarea {
+      border-color: var(--bookclub-border-medium);
+    }
+
+    .timeline-handle {
+      background: var(--bookclub-link-color);
+    }
+  }
+}
+
+// ==========================================================================
+// TWO-COLUMN LAYOUTS
+// ==========================================================================
+
+// Removed: .categories-list grid was applying to body element and breaking layout
+
+// ==========================================================================
+// HOVER EFFECTS
+// ==========================================================================
+
+// Card hover lifts
+.category-box:hover,
+.bookclub-publication-card:hover,
+.user-card:hover {
+  transform: translateY(-2px);
+}
+
+// Link hover underlines
+.cooked a:hover {
+  text-decoration-color: var(--bookclub-link-hover);
+}
+
+// ==========================================================================
+// KEYBOARD NAVIGATION HINTS
+// ==========================================================================
+
+.keyboard-shortcuts-enabled {
+  .topic-post:focus-within {
+    outline: none;
+    background: var(--bookclub-accent-soft);
+    border-radius: var(--bookclub-radius-md);
+    margin: calc(var(--bookclub-space-2) * -1);
+    padding: var(--bookclub-space-2);
+  }
+}
+
+// ==========================================================================
+// SELECTED POSTS - Float to bottom right
+// ==========================================================================
+.selected-posts {
+  position: fixed !important;
+  bottom: 1.5rem !important;
+  right: 1.5rem !important;
+  top: auto !important;
+  left: auto !important;
+  margin-left: 0 !important;
+  z-index: 1000;
+  background: var(--secondary);
+  border: 1px solid var(--primary-low);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  max-width: 320px;
+}

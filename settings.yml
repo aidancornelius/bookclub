@@ -1,0 +1,36 @@
+bookclub_show_library_in_header:
+  default: true
+  type: bool
+  description: "Show the library link prominently in the header"
+
+bookclub_header_style:
+  default: "minimal"
+  type: enum
+  choices:
+    - minimal
+    - standard
+  description: "Header style: minimal (reading-focused) or standard (more navigation)"
+
+bookclub_homepage_mode:
+  default: "library"
+  type: enum
+  choices:
+    - library
+    - featured
+    - mixed
+  description: "Homepage display: library (books grid), featured (hero + books), mixed (books + recent discussions)"
+
+bookclub_show_community_nav:
+  default: true
+  type: bool
+  description: "Show community/forum navigation link in header"
+
+bookclub_serif_headings:
+  default: true
+  type: bool
+  description: "Use serif typography for headings throughout the site"
+
+bookclub_warm_backgrounds:
+  default: true
+  type: bool
+  description: "Apply warm paper-like background colours sitewide"
