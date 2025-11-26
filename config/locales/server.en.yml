@@ -1,0 +1,147 @@
+en:
+  site_settings:
+    bookclub_enabled: "Enable the Bookclub publishing platform"
+    bookclub_default_publication_type: "Default publication type for new publications"
+    bookclub_enable_reading_mode: "Enable focused reading mode for book content"
+    bookclub_enable_dark_mode: "Allow readers to toggle dark mode"
+    bookclub_enable_font_size_controls: "Allow readers to adjust font size"
+    bookclub_default_font_size: "Default font size for reading mode"
+    bookclub_enable_keyboard_navigation: "Enable keyboard shortcuts in reading mode"
+    bookclub_enable_reading_progress: "Track reading progress for logged-in users"
+    bookclub_enable_inline_feedback: "Allow readers to leave comments on specific paragraphs"
+    bookclub_enable_suggestions: "Allow readers to suggest edits to content"
+    bookclub_enable_formal_reviews: "Enable formal peer review workflow for publications"
+    bookclub_enable_endorsements: "Allow readers to endorse content"
+    bookclub_library_path: "URL path for the library page"
+    bookclub_landing_page_enabled: "Show book-focused landing page to anonymous visitors"
+    bookclub_stripe_integration: "Use discourse-subscriptions for payment handling"
+    bookclub_manual_access_mode: "When Stripe is disabled, use manual group assignment"
+
+  bookclub:
+    admin:
+      title: "Bookclub"
+
+    errors:
+      no_publication_access: "You do not have access to this publication."
+      no_content_access: "You do not have access to this content."
+      not_author_or_editor: "You must be an author or editor to perform this action."
+
+    library:
+      title: "Library"
+      subtitle: "Browse our collection of books and publications"
+      no_publications: "No publications available yet."
+      chapters: "chapters"
+      words: "words"
+      start_reading: "Start reading"
+      view_details: "View details"
+      access_badge:
+        full: "Full access"
+        partial: "Partial access"
+        locked: "Locked"
+
+    publication:
+      by: "by"
+      table_of_contents: "Table of contents"
+      chapter: "Chapter"
+      article: "Article"
+      start_reading: "Start reading"
+      continue_reading: "Continue reading"
+      get_access: "Get access"
+      about_the_author: "About the author"
+      about_the_authors: "About the authors"
+
+    content:
+      reading_time: "%{minutes} min read"
+      discuss_this: "Discuss this %{type}"
+      comments: "comments"
+      next_chapter: "Next"
+      previous_chapter: "Previous"
+
+    reading_mode:
+      settings: "Settings"
+      table_of_contents: "Table of contents"
+      font_size: "Font size"
+      theme: "Theme"
+      light_mode: "Light mode"
+      dark_mode: "Dark mode"
+      keyboard_shortcuts: "Keyboard shortcuts"
+
+    shortcuts:
+      title: "Keyboard shortcuts"
+      next: "Next chapter"
+      previous: "Previous chapter"
+      toc: "Toggle contents"
+      settings: "Toggle settings"
+      dark_mode: "Toggle dark mode"
+      close: "Close"
+
+    feedback:
+      types:
+        comment: "Comment"
+        suggestion: "Suggestion"
+        review: "Review"
+        endorsement: "Endorsement"
+      status:
+        pending: "Pending"
+        accepted: "Accepted"
+        declined: "Declined"
+        incorporated: "Incorporated"
+      add_comment: "Add a comment"
+      suggest_edit: "Suggest an edit"
+      submit: "Submit"
+      cancel: "Cancel"
+
+    author:
+      dashboard: "Author dashboard"
+      your_publications: "Your publications"
+      add_chapter: "Add chapter"
+      edit: "Edit"
+      publish: "Publish"
+      unpublish: "Unpublish"
+      delete: "Delete"
+      reorder: "Reorder chapters"
+      analytics: "Analytics"
+      views: "Views"
+      comments: "Comments"
+      word_count: "Word count"
+      status:
+        draft: "Draft"
+        published: "Published"
+
+    paywall:
+      title: "This content requires access"
+      description: "To continue reading, you'll need to unlock this content."
+      get_access: "Get access"
+      login_prompt: "Already have access? Log in to continue."
+
+    access_tiers:
+      title: "Access options"
+      community: "Community"
+      reader: "Reader"
+      member: "Member"
+      supporter: "Supporter"
+      patron: "Patron"
+
+  system_messages:
+    bookclub_subscription_access_granted:
+      subject_template: "Access granted to %{publication_name}"
+      text_body_template: |
+        Your subscription has been activated! You now have access to:
+
+        **%{publication_name}**
+
+        Start reading: %{publication_url}
+
+        Your access tier: %{tier_name}
+
+        Thank you for your support!
+    bookclub_subscription_access_revoked:
+      subject_template: "Subscription ended for %{publication_name}"
+      text_body_template: |
+        Your subscription to **%{publication_name}** has ended.
+
+        Access tier: %{tier_name}
+
+        If this was unexpected, please check your subscription status in your account settings.
+
+        We hope to see you again soon!

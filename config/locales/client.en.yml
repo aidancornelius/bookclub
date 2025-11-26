@@ -1,0 +1,164 @@
+en:
+  js:
+    bookclub:
+      reading_mode:
+        settings: "Settings"
+        table_of_contents: "Contents"
+        font_size: "Font size"
+        theme: "Theme"
+        light_mode: "Light mode"
+        dark_mode: "Dark mode"
+        keyboard_shortcuts: "Keyboard shortcuts"
+
+      shortcuts:
+        title: "Keyboard shortcuts"
+        next: "Next chapter"
+        previous: "Previous chapter"
+        toc: "Toggle contents"
+        settings: "Toggle settings"
+        dark_mode: "Toggle dark mode"
+        show_shortcuts: "Show shortcuts"
+        close: "Close panel"
+
+      navigation:
+        next: "Next"
+        previous: "Previous"
+        back_to_book: "Back to book"
+
+      library:
+        title: "Library"
+        description: "Browse all available publications"
+        chapters: "chapters"
+        articles: "articles"
+        words: "words"
+        start_reading: "Start reading"
+        no_publications: "No publications available yet."
+        by: "by"
+
+      publication:
+        title: "Publication"
+        type_book: "Book"
+        type_journal: "Journal"
+        type_serial: "Serial"
+        chapters_tab: "Chapters"
+        articles_tab: "Articles"
+        stats_tab: "Statistics"
+        toc_title: "Contents"
+        start_reading: "Start reading"
+        continue_reading: "Continue reading"
+        word_count: "words"
+
+      content:
+        chapter: "Chapter"
+        article: "Article"
+        free: "Free"
+        preview: "Preview"
+        locked: "Locked"
+
+      progress:
+        continue: "Continue reading"
+        completed: "Completed"
+        in_progress: "In progress"
+        not_started: "Not started"
+
+      discussion:
+        title: "Discussion"
+        comments:
+          one: "1 comment"
+          other: "%{count} comments"
+        add_comment: "Add a comment"
+        join_discussion: "Join the discussion"
+        no_comments: "No comments yet. Be the first to start the discussion."
+
+      feedback:
+        add: "Add feedback"
+        comment: "Comment"
+        suggestion: "Suggest edit"
+        submit: "Submit"
+        cancel: "Cancel"
+
+      pricing:
+        title: "Get access"
+        manage_subscription: "Manage subscription"
+        change_tier: "Change tier"
+        subscribe: "Subscribe"
+        get_access: "Get access"
+        per_month: "per month"
+        per_year: "per year"
+        one_time: "one-time"
+        includes: "Includes"
+        current_plan: "Current plan"
+        free_tier: "Free"
+        community_tier: "Community"
+        supporter_tier: "Supporter"
+        patron_tier: "Patron"
+
+      access:
+        login: "Log in"
+        manage: "Manage"
+        upgrade: "Upgrade"
+        get_access: "Get access"
+        active: "Active"
+        trial: "Trial"
+        past_due: "Past due"
+        cancelled: "Cancelled"
+        no_access: "No access"
+        has_access: "Access granted"
+
+      admin:
+        title: "Bookclub"
+        description: "Manage publications and settings"
+        publications: "Publications"
+        settings: "Settings"
+
+      author:
+        title: "Author dashboard"
+        description: "Manage your publications, chapters, and reader engagement"
+        manage: "Manage"
+        view_public: "View public page"
+        back_to_dashboard: "Back to dashboard"
+        new_chapter: "New chapter"
+        create_chapter: "Create chapter"
+        edit_chapter: "Edit chapter"
+        delete_chapter: "Delete chapter"
+        save_order: "Save order"
+        saving: "Saving..."
+        publish: "Publish"
+        unpublish: "Unpublish"
+        no_publications: "No publications yet"
+        no_publications_description: "You don't have any publications to manage. Contact an administrator to get started."
+        no_chapters: "No chapters yet"
+        no_chapters_description: "Add your first chapter to get started."
+        published: "Published"
+        draft: "Draft"
+        chapters: "chapters"
+        articles: "articles"
+        words: "words"
+        views: "views"
+        comments: "comments"
+
+      stats:
+        title: "Statistics"
+        total_views: "Total views"
+        total_comments: "Total comments"
+        unique_readers: "Unique readers"
+        avg_reading_time: "Avg. reading time"
+        views_by_chapter: "Views by chapter"
+        recent_comments: "Recent comments"
+        loading: "Loading statistics..."
+        error: "Failed to load statistics"
+
+      errors:
+        not_found: "Not found"
+        access_denied: "Access denied"
+        loading_failed: "Failed to load"
+        save_failed: "Failed to save"
+        delete_failed: "Failed to delete"
+
+      actions:
+        cancel: "Cancel"
+        save: "Save"
+        delete: "Delete"
+        edit: "Edit"
+        view: "View"
+        close: "Close"

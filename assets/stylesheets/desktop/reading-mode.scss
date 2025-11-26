@@ -1,0 +1,219 @@
+// Bookclub - Desktop-specific reading mode styles
+
+.bookclub-reading-mode {
+  // Desktop navigation can be more spacious
+  .bookclub-reading-header {
+    padding: var(--bookclub-spacing-md) var(--bookclub-spacing-xl);
+  }
+
+  // Larger reading container with more padding
+  .bookclub-reading-container {
+    padding: var(--bookclub-spacing-xxl) var(--bookclub-spacing-xl);
+    padding-top: calc(var(--bookclub-spacing-xxl) * 2);
+  }
+
+  // Desktop-specific chapter header sizing
+  .bookclub-chapter-header {
+    &__title {
+      font-size: 3rem;
+    }
+  }
+
+  // Keyboard shortcuts indicator
+  .bookclub-reading-header__controls::after {
+    content: "Press ? for shortcuts";
+    font-family: var(--bookclub-font-sans);
+    font-size: 0.75rem;
+    color: var(--bookclub-text-soft);
+    margin-left: var(--bookclub-spacing-md);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+
+  .bookclub-reading-header:hover .bookclub-reading-header__controls::after {
+    opacity: 1;
+  }
+
+  // Side-by-side navigation for desktop
+  .bookclub-chapter-nav {
+    &__link {
+      max-width: 40%;
+      padding: var(--bookclub-spacing-lg);
+      border-radius: 8px;
+      transition: background 0.15s ease;
+
+      &:hover {
+        background: var(--bookclub-accent-soft);
+      }
+    }
+  }
+
+  // Discussion section with better layout
+  .bookclub-discussion-post {
+    padding: var(--bookclub-spacing-xl) 0;
+
+    &__header {
+      gap: var(--bookclub-spacing-lg);
+    }
+
+    &__avatar {
+      width: 48px;
+      height: 48px;
+    }
+  }
+
+  // Settings panel positioning
+  .bookclub-settings-panel {
+    top: 60px;
+    right: calc(50% - var(--bookclub-reading-width) / 2);
+  }
+
+  // Inline feedback markers (margin notes)
+  .bookclub-chapter-content {
+    position: relative;
+
+    [data-feedback-anchor] {
+      position: relative;
+
+      &::after {
+        content: attr(data-feedback-count);
+        position: absolute;
+        right: calc(-1 * var(--bookclub-spacing-xxl) - 40px);
+        top: 0;
+        width: 24px;
+        height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: var(--bookclub-accent-pill);
+        border-radius: 50%;
+        font-family: var(--bookclub-font-sans);
+        font-size: 0.75rem;
+        color: var(--bookclub-text-muted);
+        cursor: pointer;
+        transition: background 0.15s ease, color 0.15s ease;
+      }
+
+      &:hover::after {
+        background: var(--bookclub-link-color);
+        color: #fff;
+      }
+    }
+  }
+}
+
+// Author dashboard desktop layout
+.bookclub-author-dashboard {
+  display: block;
+  max-width: 1000px;
+  margin: 0 auto;
+  padding: var(--bookclub-spacing-xxl);
+
+  &__header {
+    text-align: center;
+    margin-bottom: var(--bookclub-spacing-xxl);
+    padding-bottom: var(--bookclub-spacing-xl);
+    border-bottom: 1px solid var(--primary-low);
+  }
+
+  &__title {
+    justify-content: center;
+    font-size: 2rem;
+    margin-bottom: var(--bookclub-spacing-sm);
+
+    .d-icon {
+      color: var(--tertiary);
+    }
+  }
+
+  &__description {
+    font-size: 1.1rem;
+    max-width: 500px;
+    margin: 0 auto;
+  }
+
+  &__publications {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
+    gap: var(--bookclub-spacing-xl);
+  }
+}
+
+// Chapter list with drag handles on desktop
+.bookclub-author-chapters {
+  &__item {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: var(--bookclub-spacing-md);
+    padding: var(--bookclub-spacing-md);
+    background: var(--bookclub-page-elevated);
+    border-radius: 8px;
+    margin-bottom: var(--bookclub-spacing-sm);
+    cursor: grab;
+
+    &:active {
+      cursor: grabbing;
+    }
+
+    &--dragging {
+      opacity: 0.5;
+      box-shadow: var(--bookclub-shadow-soft);
+    }
+  }
+
+  &__drag-handle {
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--bookclub-text-soft);
+    cursor: grab;
+  }
+
+  &__info {
+    min-width: 0;
+  }
+
+  &__title {
+    font-family: var(--bookclub-font-serif);
+    font-size: 1rem;
+    color: var(--bookclub-text-color);
+    margin: 0 0 var(--bookclub-spacing-xs);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  &__meta {
+    font-family: var(--bookclub-font-sans);
+    font-size: var(--bookclub-font-size-small);
+    color: var(--bookclub-text-soft);
+    display: flex;
+    gap: var(--bookclub-spacing-md);
+  }
+
+  &__actions {
+    display: flex;
+    gap: var(--bookclub-spacing-xs);
+  }
+
+  &__action {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    border-radius: 6px;
+    color: var(--bookclub-text-muted);
+    cursor: pointer;
+
+    &:hover {
+      background: var(--bookclub-accent-soft);
+      color: var(--bookclub-text-color);
+    }
+  }
+}

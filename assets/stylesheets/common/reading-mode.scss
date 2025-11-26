@@ -1,0 +1,908 @@
+// Bookclub - Reading mode styles
+// This transforms the topic view into a focused, book-like reading experience
+
+// Reading mode is activated when viewing a topic in a publication category
+// The body gets .bookclub-reading-mode class
+
+.bookclub-reading-mode {
+  // Override site background
+  background: var(--bookclub-page-bg) !important;
+
+  // Hide Discourse chrome that disrupts reading
+  .d-header,
+  #main-outlet-wrapper > .sidebar-wrapper,
+  .hamburger-panel,
+  .user-menu-panel,
+  .search-menu-panel,
+  .category-breadcrumb,
+  .navigation-container,
+  .topic-map,
+  .topic-footer-buttons,
+  .suggested-topics,
+  .more-topics__container,
+  .topic-timer-info,
+  .signup-cta,
+  .crawler-nav,
+  #topic-footer-buttons,
+  .topic-category,
+  .topic-meta-data .names,
+  .topic-post-badges,
+  .timeline-container,
+  .topic-navigation,
+  #topic-progress-wrapper,
+  .quote-controls,
+  .topic-avatar,
+  .post-menu-area,
+  .small-action,
+  .embedded-posts,
+  .post-links-container,
+  .who-liked {
+    display: none !important;
+  }
+
+  // Hide footer
+  .custom-footer,
+  #main-outlet ~ footer {
+    display: none !important;
+  }
+
+  // Reset main outlet for reading
+  #main-outlet {
+    padding: 0 !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+  }
+
+  .container.posts {
+    max-width: 100% !important;
+    padding: 0 !important;
+  }
+
+  // Reading mode header (minimal, appears on scroll)
+  .bookclub-reading-header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+    background: var(--bookclub-page-bg);
+    border-bottom: 1px solid var(--bookclub-border-subtle);
+    transform: translateY(-100%);
+    transition: transform 0.3s ease;
+    padding: var(--bookclub-spacing-sm) var(--bookclub-spacing-lg);
+
+    &--visible {
+      transform: translateY(0);
+    }
+
+    &__inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      max-width: var(--bookclub-reading-width);
+      margin: 0 auto;
+    }
+
+    &__title {
+      font-family: var(--bookclub-font-sans);
+      font-size: var(--bookclub-font-size-small);
+      color: var(--bookclub-text-muted);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+
+      a {
+        color: inherit;
+        text-decoration: none;
+
+        &:hover {
+          color: var(--bookclub-link-color);
+        }
+      }
+    }
+
+    &__controls {
+      display: flex;
+      align-items: center;
+      gap: var(--bookclub-spacing-sm);
+    }
+
+    &__btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
+      background: transparent;
+      border: none;
+      border-radius: 6px;
+      color: var(--bookclub-text-muted);
+      cursor: pointer;
+      transition: background 0.15s ease, color 0.15s ease;
+
+      &:hover {
+        background: var(--bookclub-accent-soft);
+        color: var(--bookclub-text-color);
+      }
+
+      svg {
+        width: 18px;
+        height: 18px;
+      }
+    }
+  }
+
+  // Reading progress bar
+  .bookclub-progress-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: var(--bookclub-progress-height);
+    background: var(--bookclub-progress-bg);
+    z-index: 1001;
+
+    &__fill {
+      height: 100%;
+      background: var(--bookclub-progress-color);
+      width: 0;
+      transition: width 0.1s ease-out;
+    }
+  }
+
+  // Reading container
+  .bookclub-reading-container {
+    max-width: var(--bookclub-reading-width);
+    margin: 0 auto;
+    padding: var(--bookclub-spacing-xxl) var(--bookclub-spacing-lg);
+    min-height: 100vh;
+  }
+
+  // Chapter header
+  .bookclub-chapter-header {
+    margin-bottom: var(--bookclub-spacing-xxl);
+    padding-bottom: var(--bookclub-spacing-xl);
+    border-bottom: 1px solid var(--bookclub-border-subtle);
+
+    &__number {
+      font-family: var(--bookclub-font-sans);
+      font-size: var(--bookclub-font-size-small);
+      color: var(--bookclub-text-soft);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      margin-bottom: var(--bookclub-spacing-sm);
+    }
+
+    &__title {
+      font-family: var(--bookclub-font-serif);
+      font-size: 2.5rem;
+      font-weight: 400;
+      color: var(--bookclub-text-color);
+      line-height: var(--bookclub-line-height-tight);
+      margin: 0;
+
+      @media (max-width: 600px) {
+        font-size: 2rem;
+      }
+    }
+
+    &__meta {
+      margin-top: var(--bookclub-spacing-md);
+      font-family: var(--bookclub-font-sans);
+      font-size: var(--bookclub-font-size-small);
+      color: var(--bookclub-text-soft);
+      display: flex;
+      gap: var(--bookclub-spacing-lg);
+    }
+  }
+
+  // Chapter content - the main reading area
+  .bookclub-chapter-content {
+    font-family: var(--bookclub-font-serif);
+    font-size: var(--bookclub-font-size-reading);
+    line-height: var(--bookclub-line-height-body);
+    color: var(--bookclub-text-color);
+
+    // Paragraphs
+    p {
+      margin: 0 0 var(--bookclub-spacing-lg);
+      text-align: left;
+      hyphens: auto;
+      -webkit-hyphens: auto;
+    }
+
+    // First paragraph - no indent, drop cap optional
+    > p:first-of-type {
+      text-indent: 0;
+    }
+
+    // Headings within content
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6 {
+      font-family: var(--bookclub-font-serif);
+      color: var(--bookclub-text-color);
+      line-height: var(--bookclub-line-height-tight);
+      margin: var(--bookclub-spacing-xxl) 0 var(--bookclub-spacing-lg);
+    }
+
+    h2 {
+      font-size: 1.75rem;
+      font-weight: 400;
+    }
+
+    h3 {
+      font-size: 1.375rem;
+      font-weight: 500;
+    }
+
+    h4 {
+      font-size: 1.125rem;
+      font-weight: 600;
+    }
+
+    // Links
+    a {
+      color: var(--bookclub-link-color);
+      text-decoration: underline;
+      text-decoration-thickness: 1px;
+      text-underline-offset: 2px;
+
+      &:hover {
+        color: var(--bookclub-link-hover);
+      }
+
+      &:visited {
+        color: var(--bookclub-link-visited);
+      }
+    }
+
+    // Emphasis
+    em,
+    i {
+      font-style: italic;
+    }
+
+    strong,
+    b {
+      font-weight: 600;
+    }
+
+    // Blockquotes
+    blockquote {
+      margin: var(--bookclub-spacing-xl) 0;
+      padding: 0 0 0 var(--bookclub-spacing-lg);
+      border-left: 3px solid var(--bookclub-border-strong);
+      font-style: italic;
+      color: var(--bookclub-text-muted);
+
+      p:last-child {
+        margin-bottom: 0;
+      }
+    }
+
+    // Lists
+    ul,
+    ol {
+      margin: 0 0 var(--bookclub-spacing-lg);
+      padding-left: var(--bookclub-spacing-xl);
+    }
+
+    li {
+      margin-bottom: var(--bookclub-spacing-sm);
+
+      &:last-child {
+        margin-bottom: 0;
+      }
+    }
+
+    // Code
+    code {
+      font-family: var(--bookclub-font-mono);
+      font-size: 0.9em;
+      background: var(--bookclub-code-bg);
+      padding: 0.1em 0.3em;
+      border-radius: 3px;
+      border: 1px solid var(--bookclub-code-border);
+    }
+
+    pre {
+      margin: var(--bookclub-spacing-xl) 0;
+      padding: var(--bookclub-spacing-lg);
+      background: var(--bookclub-code-bg);
+      border: 1px solid var(--bookclub-code-border);
+      border-radius: 8px;
+      overflow-x: auto;
+
+      code {
+        background: transparent;
+        padding: 0;
+        border: none;
+        font-size: 0.875rem;
+      }
+    }
+
+    // Images
+    img {
+      max-width: 100%;
+      height: auto;
+      margin: var(--bookclub-spacing-xl) 0;
+      border-radius: 8px;
+    }
+
+    figure {
+      margin: var(--bookclub-spacing-xl) 0;
+
+      img {
+        margin: 0;
+      }
+
+      figcaption {
+        font-family: var(--bookclub-font-sans);
+        font-size: var(--bookclub-font-size-small);
+        color: var(--bookclub-text-muted);
+        text-align: center;
+        margin-top: var(--bookclub-spacing-sm);
+      }
+    }
+
+    // Horizontal rules / section breaks
+    hr {
+      border: none;
+      text-align: center;
+      margin: var(--bookclub-spacing-xxl) 0;
+
+      &::before {
+        content: "* * *";
+        font-family: var(--bookclub-font-serif);
+        color: var(--bookclub-text-soft);
+        letter-spacing: 0.5em;
+      }
+    }
+
+    // Tables
+    table {
+      width: 100%;
+      margin: var(--bookclub-spacing-xl) 0;
+      border-collapse: collapse;
+      font-family: var(--bookclub-font-sans);
+      font-size: var(--bookclub-font-size-small);
+    }
+
+    th,
+    td {
+      padding: var(--bookclub-spacing-sm) var(--bookclub-spacing-md);
+      text-align: left;
+      border-bottom: 1px solid var(--bookclub-border-subtle);
+    }
+
+    th {
+      font-weight: 600;
+      color: var(--bookclub-text-color);
+    }
+
+    td {
+      color: var(--bookclub-text-muted);
+    }
+
+    // Footnotes
+    .footnotes {
+      margin-top: var(--bookclub-spacing-xxl);
+      padding-top: var(--bookclub-spacing-xl);
+      border-top: 1px solid var(--bookclub-border-subtle);
+      font-size: var(--bookclub-font-size-small);
+
+      ol {
+        padding-left: var(--bookclub-spacing-lg);
+      }
+    }
+
+    sup a {
+      text-decoration: none;
+      color: var(--bookclub-link-color);
+    }
+  }
+
+  // Chapter navigation
+  .bookclub-chapter-nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: var(--bookclub-spacing-xxl);
+    padding-top: var(--bookclub-spacing-xl);
+    border-top: 1px solid var(--bookclub-border-subtle);
+    gap: var(--bookclub-spacing-lg);
+
+    &__link {
+      display: flex;
+      flex-direction: column;
+      text-decoration: none;
+      max-width: 45%;
+
+      &--prev {
+        align-items: flex-start;
+      }
+
+      &--next {
+        align-items: flex-end;
+        margin-left: auto;
+      }
+
+      &:hover .bookclub-chapter-nav__title {
+        color: var(--bookclub-link-color);
+      }
+    }
+
+    &__label {
+      font-family: var(--bookclub-font-sans);
+      font-size: var(--bookclub-font-size-small);
+      color: var(--bookclub-text-soft);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: var(--bookclub-spacing-xs);
+    }
+
+    &__title {
+      font-family: var(--bookclub-font-serif);
+      font-size: 1.125rem;
+      color: var(--bookclub-text-color);
+      transition: color 0.15s ease;
+    }
+  }
+
+  // Discussion section
+  .bookclub-discussion {
+    margin-top: var(--bookclub-spacing-xxl);
+    padding-top: var(--bookclub-spacing-xxl);
+    border-top: 2px solid var(--bookclub-border-strong);
+
+    &__header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: var(--bookclub-spacing-xl);
+    }
+
+    &__title {
+      font-family: var(--bookclub-font-serif);
+      font-size: 1.5rem;
+      font-weight: 400;
+      color: var(--bookclub-text-color);
+      margin: 0;
+    }
+
+    &__count {
+      font-family: var(--bookclub-font-sans);
+      font-size: var(--bookclub-font-size-small);
+      color: var(--bookclub-text-muted);
+    }
+  }
+
+  // Discussion posts (replies)
+  .bookclub-discussion-post {
+    padding: var(--bookclub-spacing-lg) 0;
+    border-bottom: 1px solid var(--bookclub-border-subtle);
+
+    &:last-child {
+      border-bottom: none;
+    }
+
+    &__header {
+      display: flex;
+      align-items: center;
+      gap: var(--bookclub-spacing-md);
+      margin-bottom: var(--bookclub-spacing-md);
+    }
+
+    &__avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+    }
+
+    &__author {
+      flex: 1;
+    }
+
+    &__name {
+      font-family: var(--bookclub-font-sans);
+      font-size: var(--bookclub-font-size-base);
+      font-weight: 500;
+      color: var(--bookclub-text-color);
+    }
+
+    &__date {
+      font-family: var(--bookclub-font-sans);
+      font-size: var(--bookclub-font-size-small);
+      color: var(--bookclub-text-soft);
+    }
+
+    &__content {
+      font-family: var(--bookclub-font-sans);
+      font-size: var(--bookclub-font-size-base);
+      line-height: var(--bookclub-line-height-body);
+      color: var(--bookclub-text-color);
+
+      p {
+        margin: 0 0 var(--bookclub-spacing-md);
+
+        &:last-child {
+          margin-bottom: 0;
+        }
+      }
+    }
+
+    &__actions {
+      display: flex;
+      gap: var(--bookclub-spacing-md);
+      margin-top: var(--bookclub-spacing-md);
+    }
+
+    &__action {
+      font-family: var(--bookclub-font-sans);
+      font-size: var(--bookclub-font-size-small);
+      color: var(--bookclub-text-soft);
+      background: none;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: var(--bookclub-spacing-xs);
+
+      &:hover {
+        color: var(--bookclub-link-color);
+      }
+    }
+  }
+}
+
+// Table of contents sidebar (toggled)
+.bookclub-toc-sidebar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  width: 320px;
+  max-width: 90vw;
+  background: var(--bookclub-page-elevated);
+  box-shadow: var(--bookclub-shadow-soft);
+  transform: translateX(-100%);
+  transition: transform 0.3s ease;
+  z-index: 1002;
+  overflow-y: auto;
+
+  &--open {
+    transform: translateX(0);
+  }
+
+  &__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--bookclub-spacing-lg);
+    border-bottom: 1px solid var(--bookclub-border-subtle);
+  }
+
+  &__title {
+    font-family: var(--bookclub-font-serif);
+    font-size: 1.25rem;
+    font-weight: 400;
+    color: var(--bookclub-text-color);
+    margin: 0;
+  }
+
+  &__close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    background: transparent;
+    border: none;
+    border-radius: 6px;
+    color: var(--bookclub-text-muted);
+    cursor: pointer;
+
+    &:hover {
+      background: var(--bookclub-accent-soft);
+      color: var(--bookclub-text-color);
+    }
+  }
+
+  &__progress {
+    padding: var(--bookclub-spacing-md) var(--bookclub-spacing-lg);
+    border-bottom: 1px solid var(--bookclub-border-subtle);
+  }
+
+  &__progress-bar {
+    height: 4px;
+    background: var(--bookclub-accent-soft);
+    border-radius: 2px;
+    overflow: hidden;
+    margin-bottom: var(--bookclub-spacing-sm);
+  }
+
+  &__progress-fill {
+    height: 100%;
+    background: var(--bookclub-link-color);
+    border-radius: 2px;
+    transition: width 0.3s ease;
+  }
+
+  &__progress-text {
+    font-family: var(--bookclub-font-sans);
+    font-size: var(--bookclub-font-size-small);
+    color: var(--bookclub-text-soft);
+  }
+
+  &__content {
+    padding: var(--bookclub-spacing-lg);
+  }
+}
+
+// TOC sidebar overlay
+.bookclub-toc-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.3s ease, visibility 0.3s ease;
+  z-index: 1001;
+
+  &--visible {
+    opacity: 1;
+    visibility: visible;
+  }
+}
+
+// Settings panel (font size, dark mode)
+.bookclub-settings-panel {
+  position: fixed;
+  top: 50px;
+  right: var(--bookclub-spacing-lg);
+  background: var(--bookclub-page-elevated);
+  border-radius: var(--bookclub-radius-card);
+  box-shadow: var(--bookclub-shadow-soft);
+  padding: var(--bookclub-spacing-lg);
+  min-width: 200px;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(-10px);
+  transition: opacity 0.2s ease, visibility 0.2s ease, transform 0.2s ease;
+  z-index: 1003;
+
+  &--open {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+  }
+
+  &__section {
+    margin-bottom: var(--bookclub-spacing-lg);
+
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
+
+  &__label {
+    font-family: var(--bookclub-font-sans);
+    font-size: var(--bookclub-font-size-small);
+    font-weight: 500;
+    color: var(--bookclub-text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: var(--bookclub-spacing-sm);
+  }
+
+  &__font-sizes {
+    display: flex;
+    gap: var(--bookclub-spacing-xs);
+  }
+
+  &__font-btn {
+    flex: 1;
+    padding: var(--bookclub-spacing-sm);
+    background: transparent;
+    border: 1px solid var(--bookclub-border-subtle);
+    border-radius: 6px;
+    color: var(--bookclub-text-muted);
+    cursor: pointer;
+    font-family: var(--bookclub-font-serif);
+    transition: background 0.15s ease, border-color 0.15s ease;
+
+    &:hover {
+      border-color: var(--bookclub-border-strong);
+    }
+
+    &--active {
+      background: var(--bookclub-accent-soft);
+      border-color: var(--bookclub-link-color);
+      color: var(--bookclub-text-color);
+    }
+
+    &--small {
+      font-size: 14px;
+    }
+    &--medium {
+      font-size: 16px;
+    }
+    &--large {
+      font-size: 18px;
+    }
+    &--x-large {
+      font-size: 20px;
+    }
+  }
+
+  &__theme-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  &__theme-btn {
+    display: flex;
+    align-items: center;
+    gap: var(--bookclub-spacing-sm);
+    padding: var(--bookclub-spacing-sm) var(--bookclub-spacing-md);
+    background: var(--bookclub-accent-soft);
+    border: 1px solid var(--bookclub-border-subtle);
+    border-radius: var(--bookclub-radius-pill);
+    color: var(--bookclub-text-color);
+    cursor: pointer;
+    font-family: var(--bookclub-font-sans);
+    font-size: var(--bookclub-font-size-small);
+
+    &:hover {
+      border-color: var(--bookclub-border-strong);
+    }
+
+    svg {
+      width: 16px;
+      height: 16px;
+    }
+  }
+}
+
+// Paywall overlay
+.bookclub-paywall {
+  max-width: var(--bookclub-reading-width);
+  margin: 0 auto;
+  padding: var(--bookclub-spacing-xxl) var(--bookclub-spacing-lg);
+  text-align: center;
+
+  &__icon {
+    width: 64px;
+    height: 64px;
+    margin: 0 auto var(--bookclub-spacing-xl);
+    color: var(--bookclub-text-soft);
+  }
+
+  &__title {
+    font-family: var(--bookclub-font-serif);
+    font-size: 2rem;
+    font-weight: 400;
+    color: var(--bookclub-text-color);
+    margin: 0 0 var(--bookclub-spacing-md);
+  }
+
+  &__description {
+    font-family: var(--bookclub-font-sans);
+    font-size: var(--bookclub-font-size-large);
+    color: var(--bookclub-text-muted);
+    margin: 0 0 var(--bookclub-spacing-xl);
+  }
+
+  &__cta {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--bookclub-spacing-sm);
+    padding: var(--bookclub-spacing-md) var(--bookclub-spacing-xl);
+    background: var(--bookclub-link-color);
+    color: #fff;
+    font-family: var(--bookclub-font-sans);
+    font-size: var(--bookclub-font-size-base);
+    font-weight: 500;
+    border: none;
+    border-radius: var(--bookclub-radius-pill);
+    cursor: pointer;
+    text-decoration: none;
+
+    &:hover {
+      background: var(--bookclub-link-hover);
+      color: #fff;
+    }
+  }
+}
+
+// Keyboard shortcuts help
+.bookclub-shortcuts-help {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.7);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.2s ease, visibility 0.2s ease;
+  z-index: 2000;
+
+  &--visible {
+    opacity: 1;
+    visibility: visible;
+  }
+
+  &__panel {
+    background: var(--bookclub-page-elevated);
+    border-radius: var(--bookclub-radius-card);
+    padding: var(--bookclub-spacing-xl);
+    max-width: 400px;
+    width: 90%;
+  }
+
+  &__title {
+    font-family: var(--bookclub-font-serif);
+    font-size: 1.5rem;
+    font-weight: 400;
+    color: var(--bookclub-text-color);
+    margin: 0 0 var(--bookclub-spacing-lg);
+  }
+
+  &__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  &__item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: var(--bookclub-spacing-sm) 0;
+    border-bottom: 1px solid var(--bookclub-border-subtle);
+
+    &:last-child {
+      border-bottom: none;
+    }
+  }
+
+  &__action {
+    font-family: var(--bookclub-font-sans);
+    font-size: var(--bookclub-font-size-base);
+    color: var(--bookclub-text-color);
+  }
+
+  &__key {
+    font-family: var(--bookclub-font-mono);
+    font-size: var(--bookclub-font-size-small);
+    background: var(--bookclub-accent-pill);
+    padding: var(--bookclub-spacing-xs) var(--bookclub-spacing-sm);
+    border-radius: 4px;
+    color: var(--bookclub-text-muted);
+  }
+
+  &__close {
+    margin-top: var(--bookclub-spacing-lg);
+    text-align: center;
+
+    button {
+      padding: var(--bookclub-spacing-sm) var(--bookclub-spacing-xl);
+      background: transparent;
+      border: 1px solid var(--bookclub-border-strong);
+      border-radius: var(--bookclub-radius-pill);
+      color: var(--bookclub-text-color);
+      cursor: pointer;
+      font-family: var(--bookclub-font-sans);
+
+      &:hover {
+        background: var(--bookclub-accent-soft);
+      }
+    }
+  }
+}

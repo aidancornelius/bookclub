@@ -1,0 +1,459 @@
+// Bookclub Theme - Mobile Styles
+// Touch-friendly reading experience
+
+// ==========================================================================
+// HEADER - Mobile compact
+// ==========================================================================
+
+.d-header {
+  height: 56px;
+
+  .title {
+    img.logo-big {
+      max-height: 28px;
+    }
+  }
+
+  // Simplified header on mobile
+  .header-buttons {
+    gap: var(--bookclub-space-1);
+  }
+}
+
+// ==========================================================================
+// SIDEBAR / MENU - Mobile drawer
+// ==========================================================================
+
+.sidebar-wrapper {
+  background: var(--bookclub-page-bg);
+
+  &.slide-in {
+    box-shadow: var(--bookclub-shadow-elevated);
+  }
+}
+
+// Menu panel styling
+.menu-panel {
+  .panel-body {
+    padding: var(--bookclub-space-4);
+  }
+}
+
+// ==========================================================================
+// MAIN CONTENT - Mobile full-width
+// ==========================================================================
+
+#main-outlet {
+  padding: var(--bookclub-space-4);
+}
+
+// Remove excess padding on mobile
+.container,
+.wrap {
+  padding-left: var(--bookclub-space-4);
+  padding-right: var(--bookclub-space-4);
+}
+
+// ==========================================================================
+// HOMEPAGE - Mobile stack layout
+// ==========================================================================
+
+.bookclub-hero {
+  padding: var(--bookclub-space-8) var(--bookclub-space-4);
+  margin: calc(var(--bookclub-space-4) * -1) calc(var(--bookclub-space-4) * -1)
+    var(--bookclub-space-6);
+
+  h1 {
+    font-size: var(--bookclub-font-size-2xl);
+  }
+
+  p {
+    font-size: var(--bookclub-font-size-base);
+  }
+}
+
+.bookclub-publications-grid {
+  grid-template-columns: 1fr;
+  gap: var(--bookclub-space-4);
+}
+
+.bookclub-publication-card {
+  .publication-cover {
+    aspect-ratio: 16 / 9;
+  }
+
+  .publication-info {
+    padding: var(--bookclub-space-4);
+  }
+
+  .publication-title {
+    font-size: var(--bookclub-font-size-lg);
+  }
+}
+
+// Horizontal scroll for publication cards (optional alternative)
+.bookclub-publications-scroll {
+  display: flex;
+  gap: var(--bookclub-space-4);
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  padding: var(--bookclub-space-2) 0;
+  margin: 0 calc(var(--bookclub-space-4) * -1);
+  padding-left: var(--bookclub-space-4);
+  padding-right: var(--bookclub-space-4);
+
+  // Hide scrollbar but keep functionality
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+
+  .bookclub-publication-card {
+    flex: 0 0 280px;
+    scroll-snap-align: start;
+  }
+}
+
+// Section headers
+.bookclub-section {
+  margin-bottom: var(--bookclub-space-8);
+
+  .section-header {
+    flex-direction: column;
+    gap: var(--bookclub-space-2);
+    align-items: flex-start;
+    margin-bottom: var(--bookclub-space-4);
+    padding-bottom: var(--bookclub-space-3);
+
+    h2 {
+      font-size: var(--bookclub-font-size-xl);
+    }
+  }
+}
+
+// ==========================================================================
+// TOPIC LIST - Mobile compact
+// ==========================================================================
+
+.topic-list {
+  // Single column on mobile
+  .topic-list-header {
+    display: none; // Hide header on mobile
+  }
+
+  .topic-list-item {
+    display: flex;
+    flex-direction: column;
+    gap: var(--bookclub-space-2);
+    padding: var(--bookclub-space-4) 0;
+
+    .topic-list-data {
+      padding: 0;
+    }
+
+    // Topic title takes full width
+    .main-link {
+      width: 100%;
+
+      .title {
+        font-size: var(--bookclub-font-size-base);
+      }
+    }
+
+    // Stats row at bottom
+    .topic-list-data.num,
+    .topic-list-data.posts-map,
+    .topic-list-data.views,
+    .topic-list-data.activity {
+      display: inline-block;
+      font-size: var(--bookclub-font-size-xs);
+    }
+  }
+
+  // Mobile-specific metadata layout
+  .topic-item-stats {
+    display: flex;
+    gap: var(--bookclub-space-4);
+    flex-wrap: wrap;
+    color: var(--bookclub-text-soft);
+  }
+}
+
+// ==========================================================================
+// TOPIC VIEW - Mobile reading
+// ==========================================================================
+
+.topic-area {
+  padding: 0;
+}
+
+#topic-title {
+  margin-bottom: var(--bookclub-space-6);
+  padding-bottom: var(--bookclub-space-4);
+
+  h1 {
+    font-size: var(--bookclub-font-size-2xl);
+  }
+}
+
+.post-stream {
+  .topic-post {
+    padding: var(--bookclub-space-4) 0;
+
+    &:first-child {
+      margin-bottom: var(--bookclub-space-6);
+      padding-bottom: var(--bookclub-space-6);
+
+      .cooked {
+        font-size: var(--bookclub-font-size-base);
+
+        > p:first-child {
+          font-size: var(--bookclub-font-size-lg);
+        }
+      }
+    }
+  }
+}
+
+// Post content adjustments
+.cooked {
+  // Smaller font on mobile
+  font-size: var(--bookclub-font-size-base);
+
+  h1 {
+    font-size: var(--bookclub-font-size-xl);
+  }
+  h2 {
+    font-size: var(--bookclub-font-size-lg);
+  }
+  h3 {
+    font-size: var(--bookclub-font-size-md);
+  }
+
+  // Full-width images
+  img {
+    margin-left: calc(var(--bookclub-space-4) * -1);
+    margin-right: calc(var(--bookclub-space-4) * -1);
+    max-width: calc(100% + var(--bookclub-space-8));
+    border-radius: 0;
+  }
+
+  // Code blocks scroll horizontally
+  pre {
+    overflow-x: auto;
+    margin-left: calc(var(--bookclub-space-4) * -1);
+    margin-right: calc(var(--bookclub-space-4) * -1);
+    padding-left: var(--bookclub-space-4);
+    padding-right: var(--bookclub-space-4);
+    border-radius: 0;
+  }
+
+  // Tables scroll horizontally
+  table {
+    display: block;
+    overflow-x: auto;
+  }
+
+  // Blockquotes
+  blockquote {
+    margin-left: 0;
+    margin-right: 0;
+  }
+}
+
+// ==========================================================================
+// POST METADATA - Mobile compact
+// ==========================================================================
+
+.topic-meta-data {
+  font-size: var(--bookclub-font-size-sm);
+
+  .names {
+    .username a {
+      font-size: var(--bookclub-font-size-sm);
+    }
+  }
+}
+
+// Post actions always visible on mobile (no hover)
+.post-menu-area {
+  opacity: 1;
+
+  .post-action-menu__button {
+    min-height: 44px;
+    min-width: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+// ==========================================================================
+// AVATARS - Smaller on mobile
+// ==========================================================================
+
+.avatar {
+  width: 36px;
+  height: 36px;
+}
+
+.topic-avatar {
+  width: 36px;
+  padding-right: var(--bookclub-space-3);
+}
+
+// ==========================================================================
+// BUTTONS - Touch-friendly
+// ==========================================================================
+
+.btn {
+  min-height: 44px;
+  padding: var(--bookclub-space-3) var(--bookclub-space-4);
+}
+
+.btn-icon {
+  min-width: 44px;
+  min-height: 44px;
+}
+
+// ==========================================================================
+// NAVIGATION - Mobile bottom bar (optional)
+// ==========================================================================
+
+.bookclub-mobile-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 56px;
+  background: var(--bookclub-page-bg);
+  border-top: 1px solid var(--bookclub-border-subtle);
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
+  padding-bottom: env(safe-area-inset-bottom);
+  z-index: 1000;
+
+  .nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--bookclub-space-1);
+    padding: var(--bookclub-space-2);
+    color: var(--bookclub-text-muted);
+    min-width: 64px;
+
+    &.active {
+      color: var(--bookclub-link-color);
+    }
+
+    .d-icon {
+      font-size: 20px;
+    }
+
+    .nav-label {
+      font-size: var(--bookclub-font-size-xs);
+    }
+  }
+}
+
+// Add padding to main content when bottom nav is present
+body.has-mobile-nav {
+  padding-bottom: calc(56px + env(safe-area-inset-bottom));
+}
+
+// ==========================================================================
+// CATEGORY BOXES - Mobile single column
+// ==========================================================================
+
+.category-box {
+  margin-bottom: var(--bookclub-space-4);
+}
+
+.category-list {
+  .category-list-item {
+    padding: var(--bookclub-space-4);
+  }
+}
+
+// ==========================================================================
+// COMPOSER - Mobile full screen
+// ==========================================================================
+
+.composer-popup,
+#reply-control {
+  border-radius: 0;
+
+  &.open {
+    height: 100%;
+    max-height: 100%;
+    top: 0;
+    border-radius: 0;
+  }
+}
+
+.d-editor-textarea-wrapper {
+  border-radius: var(--bookclub-radius-md);
+}
+
+// ==========================================================================
+// USER CARDS - Mobile full width
+// ==========================================================================
+
+.user-card,
+.group-card {
+  max-width: 100%;
+  border-radius: var(--bookclub-radius-lg);
+}
+
+// ==========================================================================
+// DROPDOWNS - Mobile bottom sheet style
+// ==========================================================================
+
+.menu-panel {
+  &.drop-down {
+    // Could convert to bottom sheet on mobile
+    border-radius: var(--bookclub-radius-lg) var(--bookclub-radius-lg) 0 0;
+  }
+}
+
+// ==========================================================================
+// SWIPE GESTURES HINT
+// ==========================================================================
+
+.swipe-hint {
+  position: fixed;
+  bottom: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--bookclub-page-elevated);
+  border: 1px solid var(--bookclub-border-subtle);
+  border-radius: var(--bookclub-radius-pill);
+  padding: var(--bookclub-space-2) var(--bookclub-space-4);
+  font-size: var(--bookclub-font-size-xs);
+  color: var(--bookclub-text-muted);
+  box-shadow: var(--bookclub-shadow-soft);
+  opacity: 0;
+  transition: opacity var(--bookclub-transition-slow);
+  pointer-events: none;
+
+  &.visible {
+    opacity: 1;
+  }
+}
+
+// ==========================================================================
+// SAFE AREAS (notches, home indicators)
+// ==========================================================================
+
+@supports (padding: env(safe-area-inset-top)) {
+  .d-header-wrap {
+    padding-top: env(safe-area-inset-top);
+  }
+
+  .sidebar-wrapper.slide-in {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}

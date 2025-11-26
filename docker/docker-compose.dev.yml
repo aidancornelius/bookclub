@@ -1,0 +1,66 @@
+# Docker Compose setup for Bookclub plugin development
+# This is a lightweight wrapper around Discourse's existing discourse_dev container
+#
+# IMPORTANT: This setup assumes you're using it FROM the Discourse root directory,
+# not from the plugin directory. Run commands like:
+#   docker compose -f plugins/bookclub/docker/docker-compose.dev.yml up
+
+services:
+  discourse_dev:
+    image: discourse/discourse_dev:release
+    container_name: discourse_dev_bookclub
+    hostname: discourse
+    restart: unless-stopped
+
+    # Ports
+    ports:
+      - "127.0.0.1:8025:8025"  # Mailhog UI
+      - "127.0.0.1:3000:3000"  # Rails server
+      - "127.0.0.1:4200:4200"  # Ember CLI
+      - "127.0.0.1:9292:9292"  # Unicorn
+      - "127.0.0.1:9405:9405"  # Prometheus exporter
+
+    # Volumes - mount Discourse source and postgres data
+    volumes:
+      # Mount entire Discourse source (includes plugins)
+      - ../../../:/src:delegated
+      # Persistent Postgres data
+      - discourse_postgres_data:/shared/postgres_data:delegated
+      # Optional: Mount specific plugin if it's symlinked elsewhere
+      # - /path/to/bookclub:/src/plugins/bookclub:delegated
+
+    # Environment variables
+    environment:
+      # Discourse configuration
+      UNICORN_BIND_ALL: "true"
+      DISCOURSE_HOSTNAME: "localhost"
+      DISCOURSE_DEV_DB: "discourse_development"
+
+      # Plugin-specific environment
+      BOOKCLUB_ENABLED: "true"
+
+      # Ruby optimisations
+      RUBY_GLOBAL_METHOD_CACHE_SIZE: 131072
+      LD_PRELOAD: /usr/lib/libjemalloc.so
+
+      # Development settings
+      RAILS_ENV: development
+
+    # Command: start the boot script which starts all services
+    command: /sbin/boot
+
+    # Health check
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:3000/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+volumes:
+  discourse_postgres_data:
+    name: discourse_bookclub_postgres_data
+
+networks:
+  default:
+    name: discourse_bookclub_network

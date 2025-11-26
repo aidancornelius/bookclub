@@ -1,0 +1,83 @@
+plugins:
+  bookclub_enabled:
+    default: false
+    client: true
+
+  bookclub_default_publication_type:
+    default: "book"
+    type: enum
+    choices:
+      - book
+      - journal
+      - anthology
+      - series
+    client: true
+
+  bookclub_enable_reading_mode:
+    default: true
+    client: true
+
+  bookclub_enable_dark_mode:
+    default: true
+    client: true
+
+  bookclub_enable_font_size_controls:
+    default: true
+    client: true
+
+  bookclub_default_font_size:
+    default: "medium"
+    type: enum
+    choices:
+      - small
+      - medium
+      - large
+      - x-large
+    client: true
+
+  bookclub_enable_keyboard_navigation:
+    default: true
+    client: true
+
+  bookclub_enable_reading_progress:
+    default: true
+    client: true
+
+  bookclub_enable_inline_feedback:
+    default: true
+    client: true
+    description: "Allow readers to leave comments on specific paragraphs"
+
+  bookclub_enable_suggestions:
+    default: true
+    client: true
+    description: "Allow readers to suggest edits to content"
+
+  bookclub_enable_formal_reviews:
+    default: false
+    client: true
+    description: "Enable formal peer review workflow for publications"
+
+  bookclub_enable_endorsements:
+    default: true
+    client: true
+    description: "Allow readers to endorse content"
+
+  bookclub_library_path:
+    default: "/library"
+    client: true
+
+  bookclub_landing_page_enabled:
+    default: true
+    client: true
+    description: "Show book-focused landing page to anonymous visitors"
+
+  bookclub_stripe_integration:
+    default: false
+    client: false
+    description: "Use discourse-subscriptions for payment handling"
+
+  bookclub_manual_access_mode:
+    default: true
+    client: false
+    description: "When Stripe is disabled, use manual group assignment for access control"
