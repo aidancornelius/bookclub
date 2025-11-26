@@ -12,6 +12,7 @@ import { ajax } from "discourse/lib/ajax";
 export default class BookclubHomepage extends Component {
   @service site;
   @service siteSettings;
+  @service router;
 
   @tracked publications = [];
   @tracked allCategories = [];
@@ -125,8 +126,13 @@ export default class BookclubHomepage extends Component {
   }
 
   get shouldShow() {
-    // Always show on discovery pages (the outlet only renders on those anyway)
-    return true;
+    // Only show on the actual homepage, not on /latest or other discovery routes
+    const currentRoute = this.router.currentRouteName;
+    const isHomepage =
+      currentRoute === "discovery.index" ||
+      currentRoute === "index" ||
+      currentRoute === "discovery";
+    return isHomepage;
   }
 
   // Forums are non-publication categories (like General, Meta, etc.)
