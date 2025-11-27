@@ -121,10 +121,16 @@ module Bookclub
       customer_id = subscription[:customer]
       product_id = subscription.dig(:plan, :product)
 
-      return unless customer_id && product_id
+      unless customer_id && product_id
+        Rails.logger.warn("[Bookclub] Missing customer_id or product_id in subscription deletion event")
+        return
+      end
 
       user = find_user_by_customer_id(customer_id)
-      return unless user
+      unless user
+        Rails.logger.warn("[Bookclub] No user found for customer_id: #{customer_id} during deletion")
+        return
+      end
 
       invoke_subscription_integration(
         event_type: 'subscription.deleted',
@@ -139,17 +145,29 @@ module Bookclub
       customer_id = invoice[:customer]
       subscription_id = invoice[:subscription]
 
-      return unless customer_id && subscription_id
+      unless customer_id && subscription_id
+        Rails.logger.warn("[Bookclub] Missing customer_id or subscription_id in payment failed event")
+        return
+      end
 
       user = find_user_by_customer_id(customer_id)
-      return unless user
+      unless user
+        Rails.logger.warn("[Bookclub] No user found for customer_id: #{customer_id} during payment failure")
+        return
+      end
 
       # Fetch subscription to get product info
       subscription = fetch_stripe_subscription(subscription_id)
-      return unless subscription
+      unless subscription
+        Rails.logger.warn("[Bookclub] Could not fetch subscription #{subscription_id} for payment failure")
+        return
+      end
 
       product_id = subscription.dig(:plan, :product)
-      return unless product_id
+      unless product_id
+        Rails.logger.warn("[Bookclub] No product_id found in subscription #{subscription_id}")
+        return
+      end
 
       invoke_subscription_integration(
         event_type: 'payment.failed',
@@ -169,26 +187,47 @@ module Bookclub
       charge = event[:data][:object]
       customer_id = charge[:customer]
 
-      return unless customer_id
+      unless customer_id
+        Rails.logger.warn("[Bookclub] Missing customer_id in charge refunded event")
+        return
+      end
 
       user = find_user_by_customer_id(customer_id)
-      return unless user
+      unless user
+        Rails.logger.warn("[Bookclub] No user found for customer_id: #{customer_id} during refund")
+        return
+      end
 
       # Extract product info from charge metadata or invoice
       invoice_id = charge[:invoice]
-      return unless invoice_id
+      unless invoice_id
+        Rails.logger.warn("[Bookclub] No invoice_id found in refunded charge")
+        return
+      end
 
       invoice = fetch_stripe_invoice(invoice_id)
-      return unless invoice
+      unless invoice
+        Rails.logger.warn("[Bookclub] Could not fetch invoice #{invoice_id} for refund")
+        return
+      end
 
       subscription_id = invoice[:subscription]
-      return unless subscription_id
+      unless subscription_id
+        Rails.logger.warn("[Bookclub] No subscription_id found in invoice #{invoice_id}")
+        return
+      end
 
       subscription = fetch_stripe_subscription(subscription_id)
-      return unless subscription
+      unless subscription
+        Rails.logger.warn("[Bookclub] Could not fetch subscription #{subscription_id} for refund")
+        return
+      end
 
       product_id = subscription.dig(:plan, :product)
-      return unless product_id
+      unless product_id
+        Rails.logger.warn("[Bookclub] No product_id found in subscription #{subscription_id}")
+        return
+      end
 
       invoke_subscription_integration(
         event_type: 'charge.refunded',

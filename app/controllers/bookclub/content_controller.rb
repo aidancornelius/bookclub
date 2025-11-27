@@ -24,7 +24,7 @@ module Bookclub
           # Check if chapter is published (for non-authors/editors)
           unless is_author_or_editor
             published = chapter.custom_fields[CHAPTER_PUBLISHED]
-            is_published = [true, "true", "t"].include?(published)
+            is_published = boolean_custom_field?(published)
             raise Discourse::NotFound unless is_published
           end
 
@@ -222,7 +222,7 @@ module Bookclub
       # Filter to only published chapters for regular users
       chapters.select do |chapter|
         published = chapter.custom_fields[CHAPTER_PUBLISHED]
-        [true, "true", "t"].include?(published)
+        boolean_custom_field?(published)
       end
     end
 

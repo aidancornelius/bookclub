@@ -89,7 +89,7 @@ module Bookclub
       # Only show published chapters in count
       chapters.select do |chapter|
         published = chapter.custom_fields[CHAPTER_PUBLISHED]
-        [true, "true", "t"].include?(published)
+        boolean_custom_field?(published)
       end
     end
 
@@ -146,7 +146,7 @@ module Bookclub
         chapters.select do |chapter|
           published = chapter.custom_fields[CHAPTER_PUBLISHED]
           # Custom fields store booleans as strings, so check for both
-          is_published = [true, "true", "t"].include?(published)
+          is_published = boolean_custom_field?(published)
           is_author_or_editor || is_published
         end
 
@@ -155,7 +155,7 @@ module Bookclub
         is_free = access_level.blank? || access_level == "free"
         has_chapter_access = has_publication_access && guardian.can_access_chapter?(chapter)
         published = chapter.custom_fields[CHAPTER_PUBLISHED]
-        is_published = [true, "true", "t"].include?(published)
+        is_published = boolean_custom_field?(published)
 
         {
           id: chapter.id,
@@ -204,7 +204,7 @@ module Bookclub
       chapters = find_chapters(publication)
       chapters.any? do |chapter|
         published = chapter.custom_fields[CHAPTER_PUBLISHED]
-        [true, "true", "t"].include?(published)
+        boolean_custom_field?(published)
       end
     end
   end

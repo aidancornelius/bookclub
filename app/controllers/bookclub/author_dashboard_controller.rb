@@ -716,6 +716,9 @@ module Bookclub
             .limit(10)
             .includes(:user, :topic)
             .map do |post|
+              # Skip posts with deleted users
+              next unless post.user
+
               chapter = chapters.find { |ch| ch.id == post.topic.category_id }
               {
                 id: post.id,
@@ -734,7 +737,8 @@ module Bookclub
                 },
                 created_at: post.created_at,
               }
-            end,
+            end
+            .compact,
       }
     end
 

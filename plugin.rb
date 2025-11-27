@@ -98,6 +98,7 @@ end
 
 require_relative 'lib/bookclub/engine'
 require_relative 'lib/bookclub/subscription_hooks'
+require_relative 'lib/bookclub/content_helpers'
 require_relative 'lib/bookclub/book_parser'
 require_relative 'lib/bookclub/book_importer'
 

@@ -131,7 +131,8 @@ export default class BookclubChapterList extends Component {
         .sort((a, b) => a.number - b.number);
       // Reset the changed flag after successful save
       this.hasOrderChanged = false;
-    } catch {
+    } catch (error) {
+      console.error("Failed to save chapter order:", error);
       // Error already shown by service
     }
   }
@@ -170,7 +171,8 @@ export default class BookclubChapterList extends Component {
           this.contents = [...this.contents];
         }
       }
-    } catch {
+    } catch (error) {
+      console.error("Failed to toggle published status:", error);
       // Error already shown by service
     }
   }
@@ -197,7 +199,8 @@ export default class BookclubChapterList extends Component {
 
         // Remove from local state
         this.contents = this.contents.filter((c) => c.id !== content.id);
-      } catch {
+      } catch (error) {
+        console.error("Failed to delete chapter:", error);
         // Error already shown by service
       }
     }

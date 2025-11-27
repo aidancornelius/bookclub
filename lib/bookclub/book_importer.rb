@@ -69,8 +69,17 @@ module Bookclub
               create_chapter(publication, chapter_data)
               chapters_created << chapter_data.title
             end
+          rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotSaved, ImportError => e
+            error_message = "Error with chapter '#{chapter_data.title}': #{e.message}"
+            errors << error_message
+            Rails.logger.error("[Bookclub::BookImporter] #{error_message}")
+            Rails.logger.error(e.backtrace.join("\n")) if e.backtrace
           rescue StandardError => e
-            errors << "Error with chapter '#{chapter_data.title}': #{e.message}"
+            # Catch any unexpected errors but log them with full details
+            error_message = "Unexpected error with chapter '#{chapter_data.title}': #{e.class.name} - #{e.message}"
+            errors << error_message
+            Rails.logger.error("[Bookclub::BookImporter] #{error_message}")
+            Rails.logger.error(e.backtrace.join("\n")) if e.backtrace
           end
         end
 
@@ -87,13 +96,28 @@ module Bookclub
           )
         )
       end
-    rescue StandardError => e
+    rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotSaved, ImportError => e
+      error_message = "Import failed: #{e.message}"
+      Rails.logger.error("[Bookclub::BookImporter] #{error_message}")
+      Rails.logger.error(e.backtrace.join("\n")) if e.backtrace
       ImportResult.new(
         success: false,
         publication: nil,
         chapters_created: [],
         chapters_updated: [],
-        errors: [e.message],
+        errors: [error_message],
+      )
+    rescue StandardError => e
+      # Catch any unexpected errors but log them with full details
+      error_message = "Unexpected import error: #{e.class.name} - #{e.message}"
+      Rails.logger.error("[Bookclub::BookImporter] #{error_message}")
+      Rails.logger.error(e.backtrace.join("\n")) if e.backtrace
+      ImportResult.new(
+        success: false,
+        publication: nil,
+        chapters_created: [],
+        chapters_updated: [],
+        errors: [error_message],
       )
     end
 
@@ -240,8 +264,15 @@ module Bookclub
     end
 
     def upload_cover(publication, image_data)
-      # TODO: Implement cover image upload
-      # Would need to create an Upload and set PUBLICATION_COVER_URL
+      # TODO: Implement cover image upload functionality
+      # This would require:
+      # 1. Decoding the image_data (likely base64 or file path)
+      # 2. Creating a Discourse Upload object via UploadCreator
+      # 3. Setting publication.custom_fields[PUBLICATION_COVER_URL] to upload.url
+      # 4. Handling validation and error cases
+      Rails.logger.warn(
+        "[Bookclub::BookImporter] Cover image upload not yet implemented for publication #{publication.id}"
+      )
     end
 
     def generate_slug(title)

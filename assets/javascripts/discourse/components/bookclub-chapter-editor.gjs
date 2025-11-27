@@ -155,7 +155,8 @@ accessLevelOptions = [
       } else if (result.errors) {
         this.errors = result.errors;
       }
-    } catch {
+    } catch (error) {
+      console.error("Failed to save chapter:", error);
       // Error already shown by service
     } finally {
       this.saving = false;
