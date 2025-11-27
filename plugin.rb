@@ -333,6 +333,7 @@ after_initialize do
   Discourse::Application.routes.prepend do
     get '/book/:slug' => 'bookclub/publications#show', :as => :bookclub_publication
     get '/book/:slug/:content_number' => 'bookclub/content#show', :as => :bookclub_content
+    get '/pages/:slug' => 'bookclub/pages#show', :as => :bookclub_page
   end
 
   # Admin routes

@@ -1,4 +1,5 @@
 en:
+  chapters: "Chapters"
   js:
     bookclub:
       reading_mode:
@@ -28,7 +29,7 @@ en:
       library:
         title: "Library"
         description: "Browse all available publications"
-        chapters: "chapters"
+        chapters: "Chapters"
         articles: "articles"
         words: "words"
         start_reading: "Start reading"
@@ -60,6 +61,11 @@ en:
         completed: "Completed"
         in_progress: "In progress"
         not_started: "Not started"
+
+      bookmark:
+        add: "Add bookmark"
+        remove: "Remove bookmark"
+        saving: "Saving..."
 
       discussion:
         title: "Discussion"
@@ -122,6 +128,12 @@ en:
         create: "Create"
         save_settings: "Save settings"
         new_chapter: "New chapter"
+        new_issue: "New issue"
+        issues: "Issues"
+        content_label: "Content"
+        content_placeholder: "Page content (Markdown supported)"
+        content_label: "Content"
+        content_placeholder: "Page content (Markdown supported)"
         create_chapter: "Create chapter"
         edit_chapter: "Edit chapter"
         delete_chapter: "Delete chapter"
@@ -135,7 +147,7 @@ en:
         no_chapters_description: "Add your first chapter to get started."
         published: "Published"
         draft: "Draft"
-        chapters: "chapters"
+        chapters: "Chapters"
         articles: "articles"
         words: "words"
         views: "views"
@@ -182,3 +194,28 @@ en:
         edit: "Edit"
         view: "View"
         close: "Close"
+
+      pages:
+        title: "Pages"
+        new_page: "New page"
+        create: "Create page"
+        save: "Save page"
+        edit_page: "Edit page"
+        delete_page: "Delete page"
+        no_pages: "No pages yet"
+        no_pages_description: "Create your first page to add content to your site navigation."
+        title_label: "Title"
+        slug_label: "URL slug"
+        content_label: "Content"
+        parent_label: "Parent page"
+        nav_position_label: "Navigation position"
+        icon_label: "Icon"
+        position_label: "Position"
+        visible_label: "Visible"
+        show_in_nav_label: "Show in navigation"
+        nav_header: "Header"
+        nav_footer: "Footer"
+        nav_none: "None"
+        parent_none: "None (top-level)"
+        issues: "Issues"
+        new_issue: "New issue"

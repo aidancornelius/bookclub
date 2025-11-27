@@ -97,6 +97,9 @@ export default class BookclubReadingService extends Service {
     // Load and restore reading progress
     await this._loadAndRestoreProgress();
 
+    // Auto-bookmark the current reading position (logged in users only)
+    this._autoBookmarkReadingPosition(content);
+
     document.body.classList.add("bookclub-reading-mode");
     this._applyFontSize(this.fontSize);
     this._applyDarkMode(this.isDarkMode);
@@ -346,6 +349,35 @@ export default class BookclubReadingService extends Service {
     } catch (error) {
       // eslint-disable-next-line no-console
       console.error("Failed to load reading streak:", error);
+    }
+  }
+
+  /**
+   * Auto-bookmark the reading position (replaces any existing reading bookmark)
+   * @private
+   * @param {Object} content - The current content/chapter data
+   */
+  async _autoBookmarkReadingPosition(content) {
+    if (!this.currentUser) {
+      return;
+    }
+
+    // Need the content_topic_id to create the bookmark
+    const topicId = content.content_topic_id;
+    if (!topicId) {
+      return;
+    }
+
+    try {
+      const { ajax } = await import("discourse/lib/ajax");
+      await ajax("/bookclub/reading-bookmark.json", {
+        method: "POST",
+        data: { topic_id: topicId },
+      });
+    } catch (error) {
+      // Silently fail - auto-bookmarking is not critical
+      // eslint-disable-next-line no-console
+      console.log("Failed to auto-bookmark reading position:", error);
     }
   }
 

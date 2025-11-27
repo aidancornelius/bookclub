@@ -7,6 +7,7 @@ import { modifier } from "ember-modifier";
 import DButton from "discourse/components/d-button";
 import DModal from "discourse/components/d-modal";
 import icon from "discourse/helpers/d-icon";
+import I18n from "discourse-i18n";
 import BookclubChapterEditor from "./bookclub-chapter-editor";
 
 /**
@@ -271,16 +272,28 @@ export default class BookclubChapterList extends Component {
     return count.toLocaleString();
   }
 
+  get contentTitle() {
+    return this.args.publicationType === "journal"
+      ? I18n.t("bookclub.author.issues")
+      : I18n.t("bookclub.author.chapters");
+  }
+
+  get newContentLabel() {
+    return this.args.publicationType === "journal"
+      ? "bookclub.author.new_issue"
+      : "bookclub.author.new_chapter";
+  }
+
   <template>
     <div class="bookclub-chapter-list">
       <div class="bookclub-chapter-list__header">
         <h2 class="bookclub-chapter-list__title">
           {{icon "list-ul"}}
-          Chapters
+          {{this.contentTitle}}
         </h2>
         <DButton
           @action={{this.openChapterEditor}}
-          @label="bookclub.author.new_chapter"
+          @label={{this.newContentLabel}}
           @icon="plus"
           class="btn-primary"
         />
@@ -395,6 +408,7 @@ export default class BookclubChapterList extends Component {
       <DModal
         @closeModal={{this.closeChapterEditor}}
         @title={{if this.editingChapter "Edit chapter" "New chapter"}}
+        @submitOnEnter={{false}}
       >
         <:body>
           <BookclubChapterEditor

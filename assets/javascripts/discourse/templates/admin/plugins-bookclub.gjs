@@ -3,6 +3,7 @@ import { i18n } from "discourse-i18n";
 
 export default <template>
   <div class="admin-plugin-bookclub">
+  <br>
     <h1>
       {{icon "book-open"}}
       {{i18n "bookclub.admin.title"}}
@@ -32,7 +33,7 @@ export default <template>
       <h2>Resources</h2>
       <ul>
         <li>
-          <a href="/library">Library</a>
+          <a href="/">Library</a>
           - View all publications
         </li>
         <li>

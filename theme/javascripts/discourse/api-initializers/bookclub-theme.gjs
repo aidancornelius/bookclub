@@ -133,16 +133,40 @@ export default apiInitializer((api) => {
           collapsedByDefault = false;
 
           get links() {
-            return [
+            const links = [
               new (class extends BaseCustomSidebarSectionLink {
                 name = "author-dashboard";
-                href = "/bookclub/author";
+                route = "bookclub-author";
                 title = "Manage your publications";
                 text = "Author dashboard";
                 prefixType = "icon";
                 prefixValue = "pen";
+
+                get currentWhen() {
+                  return "bookclub-author bookclub-author-publication";
+                }
               })(),
             ];
+
+            // Only admins can manage pages
+            if (currentUser?.admin) {
+              links.push(
+                new (class extends BaseCustomSidebarSectionLink {
+                  name = "pages-dashboard";
+                  route = "bookclub-pages-admin";
+                  title = "Pages dashboard";
+                  text = "Pages dashboard";
+                  prefixType = "icon";
+                  prefixValue = "file-lines";
+
+                  get currentWhen() {
+                    return "bookclub-pages-admin";
+                  }
+                })()
+              );
+            }
+
+            return links;
           }
         };
       },

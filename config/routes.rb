@@ -19,6 +19,11 @@ Bookclub::Engine.routes.draw do
     put "/reading-progress/:publication_slug" => "reading_progress#update"
     get "/reading-streak" => "reading_progress#streak"
 
+    # Reading position bookmark (continue reading)
+    get "/reading-bookmark" => "bookmarks#show"
+    post "/reading-bookmark" => "bookmarks#create"
+    delete "/reading-bookmark" => "bookmarks#destroy"
+
     # Pricing and subscriptions
     get "/publications/:slug/pricing" => "pricing#tiers"
     get "/publications/:slug/subscription" => "pricing#subscription_status"
@@ -48,6 +53,17 @@ Bookclub::Engine.routes.draw do
     # Book import
     post "/import" => "author_dashboard#import_book"
     post "/publications/:slug/import" => "author_dashboard#reimport_book"
+  end
+
+  # Pages (static content)
+  scope "/pages", format: :json do
+    get "/" => "pages#index"
+    get "/nav" => "pages#nav"
+    post "/" => "pages#create"
+    post "/reorder" => "pages#reorder"
+    get "/:slug" => "pages#show"
+    put "/:slug" => "pages#update"
+    delete "/:slug" => "pages#destroy"
   end
 
   # Feedback/reviews (public scholarship)

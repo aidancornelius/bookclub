@@ -4,6 +4,8 @@ import { on } from "@ember/modifier";
 import { action } from "@ember/object";
 import { service } from "@ember/service";
 import DButton from "discourse/components/d-button";
+import DEditor from "discourse/components/d-editor";
+import { i18n } from "discourse-i18n";
 import ComboBox from "discourse/select-kit/components/combo-box";
 
 /**
@@ -25,6 +27,7 @@ export default class BookclubChapterEditor extends Component {
   @tracked summary = this.args.chapter?.summary || "";
   @tracked saving = false;
   @tracked errors = [];
+  markdownOptions = { lookup_topic: false };
 
   contentTypeOptions = [
     { id: "chapter", name: "Chapter" },
@@ -70,8 +73,8 @@ accessLevelOptions = [
    * @param {Event} event - Input event
    */
   @action
-  updateBody(event) {
-    this.body = event.target.value;
+  updateBody(value) {
+    this.body = value || "";
   }
 
   /**
@@ -235,20 +238,15 @@ accessLevelOptions = [
 
         <div class="bookclub-chapter-editor__field">
           <label class="bookclub-chapter-editor__label">
-            Content
+            {{i18n "bookclub.author.content_label"}}
             <span class="required">*</span>
           </label>
-          <textarea
-            value={{this.body}}
-            {{on "input" this.updateBody}}
-            placeholder="Write your chapter content here..."
-            rows="15"
-            class="bookclub-chapter-editor__textarea bookclub-chapter-editor__textarea--large"
+          <DEditor
+            @value={{this.body}}
+            @change={{this.updateBody}}
+            @placeholder={{i18n "bookclub.author.content_placeholder"}}
+            @markdownOptions={{this.markdownOptions}}
           />
-          <div class="bookclub-chapter-editor__hint">
-            You can use Markdown formatting. The content will create a new
-            topic.
-          </div>
         </div>
       </div>
 

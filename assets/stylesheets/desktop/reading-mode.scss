@@ -105,9 +105,9 @@
 // Author dashboard desktop layout
 .bookclub-author-dashboard {
   display: block;
-  max-width: 1000px;
+  max-width: none;
   margin: 0 auto;
-  padding: var(--bookclub-spacing-xxl);
+  padding: var(--bookclub-spacing-xl) var(--bookclub-spacing-lg);
 
   &__header {
     text-align: center;

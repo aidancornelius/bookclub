@@ -2,6 +2,7 @@ import { LinkTo } from "@ember/routing";
 import { htmlSafe } from "@ember/template";
 import bodyClass from "discourse/helpers/body-class";
 import icon from "discourse/helpers/d-icon";
+import BookclubBookmarkButton from "discourse/plugins/bookclub/discourse/components/bookclub-bookmark-button";
 import BookclubChapterDiscussions from "discourse/plugins/bookclub/discourse/components/bookclub-chapter-discussions";
 import BookclubChapterNav from "discourse/plugins/bookclub/discourse/components/bookclub-chapter-nav";
 import BookclubDiscussButton from "discourse/plugins/bookclub/discourse/components/bookclub-discuss-button";
@@ -61,9 +62,12 @@ export default <template>
           {{htmlSafe @controller.chapter.body_html}}
         </div>
 
-        {{#if @controller.discussions}}
-          <BookclubDiscussButton />
-        {{/if}}
+        <div class="bookclub-content__actions">
+          <BookclubBookmarkButton @topicId={{@controller.chapter.content_topic_id}} />
+          {{#if @controller.discussions}}
+            <BookclubDiscussButton />
+          {{/if}}
+        </div>
       </article>
 
       {{#if @controller.discussions}}

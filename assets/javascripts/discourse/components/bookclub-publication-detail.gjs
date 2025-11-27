@@ -132,6 +132,7 @@ export default class BookclubPublicationDetail extends Component {
           <BookclubChapterList
             @publicationSlug={{this.publication.slug}}
             @chapters={{this.publication.chapters}}
+            @publicationType={{this.publication.type}}
           />
         {{else if (eq this.activeTab "stats")}}
           <BookclubPublicationStats
