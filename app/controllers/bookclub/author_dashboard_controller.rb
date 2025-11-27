@@ -16,11 +16,11 @@ module Bookclub
         end
 
       respond_to do |format|
-        format.html { render 'default/empty' }
+        format.html { render "default/empty" }
         format.json do
           render json: {
-            publications: publications.map { |pub| serialize_author_publication(pub) }
-          }
+                   publications: publications.map { |pub| serialize_author_publication(pub) },
+                 }
         end
       end
     end
@@ -35,7 +35,55 @@ module Bookclub
             )
         end
 
-      render json: { publications: publications.map { |pub| serialize_author_publication(pub) } }
+      render json: {
+               publications: publications.map { |pub| serialize_author_publication(pub) },
+               can_create: guardian.is_admin?,
+             }
+    end
+
+    def create_publication
+      raise Discourse::InvalidAccess unless guardian.is_admin?
+
+      name = params[:name]
+      publication_type = params[:type] || "book"
+      slug = params[:slug].presence || name.parameterize
+
+      # Check slug uniqueness
+      existing =
+        categories_with_custom_fields.find { |c| c.custom_fields[PUBLICATION_SLUG] == slug }
+      if existing
+        return(
+          render json: {
+                   success: false,
+                   errors: ["Slug already exists"],
+                 },
+                 status: :unprocessable_entity
+        )
+      end
+
+      # Create the category
+      publication =
+        Category.new(name: name, user: current_user, color: "0088CC", text_color: "FFFFFF")
+
+      if publication.save
+        # Set publication custom fields
+        publication.custom_fields[PUBLICATION_ENABLED] = true
+        publication.custom_fields[PUBLICATION_TYPE] = publication_type
+        publication.custom_fields[PUBLICATION_SLUG] = slug
+        publication.custom_fields[PUBLICATION_AUTHOR_IDS] = [current_user.id]
+        publication.custom_fields[PUBLICATION_DESCRIPTION] = params[:description] if params[
+          :description
+        ]
+        publication.save_custom_fields
+
+        render json: { success: true, publication: serialize_author_publication(publication) }
+      else
+        render json: {
+                 success: false,
+                 errors: publication.errors.full_messages,
+               },
+               status: :unprocessable_entity
+      end
     end
 
     def publication
@@ -45,7 +93,7 @@ module Bookclub
       ensure_author_or_editor!(publication)
 
       respond_to do |format|
-        format.html { render 'default/empty' }
+        format.html { render "default/empty" }
         format.json { render json: serialize_author_publication_detail(publication) }
       end
     end
@@ -57,11 +105,62 @@ module Bookclub
       ensure_author_or_editor!(publication)
 
       render json: {
-        publication_id: publication.id,
-        views: calculate_views(publication),
-        engagement: calculate_engagement(publication),
-        reader_progress: calculate_reader_progress(publication)
-      }
+               publication_id: publication.id,
+               views: calculate_views(publication),
+               engagement: calculate_engagement(publication),
+               reader_progress: calculate_reader_progress(publication),
+             }
+    end
+
+    def update_publication
+      publication = find_publication_category(params[:slug])
+      raise Discourse::NotFound unless publication
+
+      ensure_author_or_editor!(publication)
+
+      # Clear preloaded custom fields proxy to allow modification
+      # reload alone doesn't clear @preloaded_custom_fields, so we must do it explicitly
+      publication.instance_variable_set(:@preloaded_custom_fields, nil)
+      publication.instance_variable_set(:@preloaded_proxy, nil)
+
+      # Update category name if provided
+      if params[:name].present? && params[:name] != publication.name
+        publication.name = params[:name]
+        publication.save!
+      end
+
+      # Update custom fields
+      publication.custom_fields[PUBLICATION_TYPE] = params[:type] if params.key?(:type)
+      publication.custom_fields[PUBLICATION_DESCRIPTION] = params[:description] if params.key?(
+        :description,
+      )
+      publication.custom_fields[PUBLICATION_COVER_URL] = params[:cover_url] if params.key?(
+        :cover_url,
+      )
+
+      # Update slug if provided (and different)
+      if params[:new_slug].present? &&
+           params[:new_slug] != publication.custom_fields[PUBLICATION_SLUG]
+        # Check slug uniqueness
+        existing =
+          categories_with_custom_fields.find do |c|
+            c.id != publication.id && c.custom_fields[PUBLICATION_SLUG] == params[:new_slug]
+          end
+        if existing
+          return(
+            render json: {
+                     success: false,
+                     errors: ["Slug already exists"],
+                   },
+                   status: :unprocessable_entity
+          )
+        end
+        publication.custom_fields[PUBLICATION_SLUG] = params[:new_slug]
+      end
+
+      publication.save_custom_fields
+
+      render json: { success: true, publication: serialize_author_publication_detail(publication) }
     end
 
     def create_chapter
@@ -76,9 +175,9 @@ module Bookclub
       next_number = existing_numbers.empty? ? 1 : existing_numbers.max + 1
 
       # Generate default title if not provided
-      chapter_type = params[:content_type] || params[:chapter_type] || 'chapter'
+      chapter_type = params[:content_type] || params[:chapter_type] || "chapter"
       default_title =
-        if publication.custom_fields[PUBLICATION_TYPE] == 'journal'
+        if publication.custom_fields[PUBLICATION_TYPE] == "journal"
           "Article #{next_number}"
         else
           "Chapter #{next_number}"
@@ -92,7 +191,7 @@ module Bookclub
           user: current_user,
           parent_category_id: publication.id,
           color: publication.color,
-          text_color: publication.text_color
+          text_color: publication.text_color,
         )
 
       if chapter.save
@@ -101,9 +200,9 @@ module Bookclub
         chapter.custom_fields[CHAPTER_TYPE] = chapter_type
         chapter.custom_fields[CHAPTER_NUMBER] = next_number
         chapter.custom_fields[CHAPTER_PUBLISHED] = false
-        chapter.custom_fields[CHAPTER_ACCESS_LEVEL] = params[:access_level] || 'free'
+        chapter.custom_fields[CHAPTER_ACCESS_LEVEL] = params[:access_level] || "free"
         chapter.custom_fields[CHAPTER_SUMMARY] = params[:summary]
-        chapter.custom_fields[CHAPTER_REVIEW_STATUS] = 'draft'
+        chapter.custom_fields[CHAPTER_REVIEW_STATUS] = "draft"
         chapter.save_custom_fields
 
         # Create the pinned content topic
@@ -113,18 +212,18 @@ module Bookclub
             user: current_user,
             category: chapter,
             pinned_at: Time.current,
-            pinned_globally: false
+            pinned_globally: false,
           )
 
         if content_topic.save
           # Create the first post with the content
-          default_body = params[:body].presence || 'Write your content here...'
+          default_body = params[:body].presence || "Write your content here..."
           post =
             PostCreator.new(
               current_user,
               topic_id: content_topic.id,
               raw: default_body,
-              skip_validations: true
+              skip_validations: true,
             ).create
 
           # Mark this as the content topic
@@ -136,20 +235,24 @@ module Bookclub
           chapter.custom_fields[CHAPTER_WORD_COUNT] = word_count
           chapter.save_custom_fields
 
+          # Sync category permissions based on access level
+          access_level = params[:access_level] || "free"
+          sync_chapter_permissions(chapter, access_level, publication)
+
           render json: { success: true, chapter: serialize_author_chapter(chapter) }
         else
           # Clean up the category if topic creation failed
           chapter.destroy
           render json: {
                    success: false,
-                   errors: content_topic.errors.full_messages
+                   errors: content_topic.errors.full_messages,
                  },
                  status: :unprocessable_entity
         end
       else
         render json: {
                  success: false,
-                 errors: chapter.errors.full_messages
+                 errors: chapter.errors.full_messages,
                },
                status: :unprocessable_entity
       end
@@ -162,7 +265,7 @@ module Bookclub
       ensure_author_or_editor!(publication)
 
       order = params[:order]
-      return render json: { error: 'order_required' }, status: :bad_request if order.blank?
+      return render json: { error: "order_required" }, status: :bad_request if order.blank?
 
       order.each do |item|
         chapter =
@@ -172,6 +275,9 @@ module Bookclub
           end
         next unless chapter
 
+        # Clear preloaded custom fields proxy to allow modification
+        chapter.instance_variable_set(:@preloaded_custom_fields, nil)
+        chapter.instance_variable_set(:@preloaded_proxy, nil)
         chapter.custom_fields[CHAPTER_NUMBER] = item[:number].to_i
         chapter.save_custom_fields
       end
@@ -188,21 +294,41 @@ module Bookclub
       chapter = find_chapter(publication, params[:number])
       raise Discourse::NotFound unless chapter
 
-      # Update allowed fields
-      chapter.custom_fields[CHAPTER_PUBLISHED] = params[:published] if params.key?(:published)
+      # Clear preloaded custom fields proxy to allow modification
+      chapter.instance_variable_set(:@preloaded_custom_fields, nil)
+      chapter.instance_variable_set(:@preloaded_proxy, nil)
 
-      chapter.custom_fields[CHAPTER_ACCESS_LEVEL] = params[:access_level] if params.key?(
-        :access_level
-      )
+      # Track if we need to sync permissions
+      needs_permission_sync = false
+      new_published = nil
+      new_access_level = chapter.custom_fields[CHAPTER_ACCESS_LEVEL]
+
+      # Update allowed fields
+      if params.key?(:published)
+        chapter.custom_fields[CHAPTER_PUBLISHED] = params[:published]
+        new_published = params[:published]
+        needs_permission_sync = true
+      end
+
+      if params.key?(:access_level)
+        chapter.custom_fields[CHAPTER_ACCESS_LEVEL] = params[:access_level]
+        new_access_level = params[:access_level]
+        needs_permission_sync = true
+      end
+
+      # Sync Discourse category permissions when access level or published status changes
+      if needs_permission_sync
+        sync_chapter_permissions(chapter, new_access_level, publication, published: new_published)
+      end
 
       chapter.custom_fields[CHAPTER_SUMMARY] = params[:summary] if params.key?(:summary)
 
       chapter.custom_fields[CHAPTER_REVIEW_STATUS] = params[:review_status] if params.key?(
-        :review_status
+        :review_status,
       )
 
       chapter.custom_fields[CHAPTER_NUMBER] = params[:chapter_number].to_i if params.key?(
-        :chapter_number
+        :chapter_number,
       )
 
       # Update category name if title changed
@@ -245,7 +371,187 @@ module Bookclub
       render json: { success: true }
     end
 
+    # Import a book from uploaded file (creates new publication)
+    def import_book
+      raise Discourse::InvalidAccess unless guardian.is_admin?
+
+      file = params[:file]
+      raise Discourse::InvalidParameters.new(:file) unless file
+
+      begin
+        parsed_book = parse_uploaded_file(file)
+
+        result =
+          BookImporter.new(
+            user: current_user,
+            parsed_book: parsed_book,
+            slug: params[:slug],
+            publish: params[:publish] == "true",
+            access_level: params[:access_level] || "free",
+          ).import!
+
+        if result.success
+          render json: {
+                   success: true,
+                   publication: serialize_author_publication_detail(result.publication),
+                   chapters_created: result.chapters_created,
+                   chapters_updated: result.chapters_updated,
+                   errors: result.errors,
+                 }
+        else
+          render json: { success: false, errors: result.errors }, status: :unprocessable_entity
+        end
+      rescue BookParser::ParseError => e
+        render json: {
+                 success: false,
+                 errors: ["Parse error: #{e.message}"],
+               },
+               status: :unprocessable_entity
+      rescue BookImporter::ImportError => e
+        render json: {
+                 success: false,
+                 errors: ["Import error: #{e.message}"],
+               },
+               status: :unprocessable_entity
+      end
+    end
+
+    # Re-import/update an existing publication
+    def reimport_book
+      publication = find_publication_category(params[:slug])
+      raise Discourse::NotFound unless publication
+
+      ensure_author_or_editor!(publication)
+
+      file = params[:file]
+      raise Discourse::InvalidParameters.new(:file) unless file
+
+      begin
+        parsed_book = parse_uploaded_file(file)
+
+        result =
+          BookImporter.new(
+            user: current_user,
+            parsed_book: parsed_book,
+            publication_id: publication.id,
+            replace_existing: params[:replace_existing] == "true",
+            publish: params[:publish] == "true",
+            access_level: params[:access_level] || "free",
+          ).import!
+
+        if result.success
+          render json: {
+                   success: true,
+                   publication: serialize_author_publication_detail(result.publication),
+                   chapters_created: result.chapters_created,
+                   chapters_updated: result.chapters_updated,
+                   errors: result.errors,
+                 }
+        else
+          render json: { success: false, errors: result.errors }, status: :unprocessable_entity
+        end
+      rescue BookParser::ParseError => e
+        render json: {
+                 success: false,
+                 errors: ["Parse error: #{e.message}"],
+               },
+               status: :unprocessable_entity
+      rescue BookImporter::ImportError => e
+        render json: {
+                 success: false,
+                 errors: ["Import error: #{e.message}"],
+               },
+               status: :unprocessable_entity
+      end
+    end
+
     private
+
+    def parse_uploaded_file(file)
+      filename = file.original_filename
+
+      if filename.end_with?(".textpack", ".zip")
+        # Handle compressed files
+        BookParser.parse(file_path: file.tempfile.path)
+      elsif filename.end_with?(".textbundle")
+        # TextBundle as directory (unlikely via upload, but handle it)
+        BookParser.parse(file_path: file.tempfile.path)
+      else
+        # Read content directly for text/markdown files
+        content = file.read
+        BookParser.parse(content: content, filename: filename)
+      end
+    end
+
+    # Sync Discourse category permissions based on chapter access level and published status
+    def sync_chapter_permissions(chapter, access_level, publication, published: nil)
+      # Determine published status
+      is_published =
+        if published.nil?
+          pub_val = chapter.custom_fields[CHAPTER_PUBLISHED]
+          [true, "true", "t"].include?(pub_val)
+        else
+          [true, "true", "t"].include?(published)
+        end
+
+      # Clear existing category group permissions
+      CategoryGroup.where(category_id: chapter.id).delete_all
+
+      # Unpublished chapters: only staff can see
+      unless is_published
+        CategoryGroup.create!(
+          category_id: chapter.id,
+          group_id: Group::AUTO_GROUPS[:staff],
+          permission_type: CategoryGroup.permission_types[:full],
+        )
+        return
+      end
+
+      if access_level.blank? || access_level == "free"
+        # Free published content: everyone can see
+        CategoryGroup.create!(
+          category_id: chapter.id,
+          group_id: Group::AUTO_GROUPS[:everyone],
+          permission_type: CategoryGroup.permission_types[:full],
+        )
+      else
+        # Paid/tiered content: restrict to specific groups based on access tiers
+        access_tiers = publication.custom_fields[PUBLICATION_ACCESS_TIERS] || {}
+        tier_hierarchy = %w[community reader member supporter patron]
+        required_tier_index = tier_hierarchy.index(access_level) || 0
+
+        allowed_groups = []
+
+        access_tiers.each do |group_name, tier_level|
+          next if group_name == "everyone"
+
+          tier_index = tier_hierarchy.index(tier_level) || 0
+          next if tier_index < required_tier_index
+
+          group = Group.find_by(name: group_name)
+          allowed_groups << group.id if group
+        end
+
+        # Always allow staff full access
+        CategoryGroup.create!(
+          category_id: chapter.id,
+          group_id: Group::AUTO_GROUPS[:staff],
+          permission_type: CategoryGroup.permission_types[:full],
+        )
+
+        # Add allowed groups
+        allowed_groups.each do |group_id|
+          CategoryGroup.create!(
+            category_id: chapter.id,
+            group_id: group_id,
+            permission_type: CategoryGroup.permission_types[:full],
+          )
+        end
+
+        # If no groups have access, only staff can see it
+        # This effectively hides paid content from non-subscribers
+      end
+    end
 
     def serialize_author_publication(publication)
       chapters = find_chapters(publication)
@@ -265,7 +571,7 @@ module Bookclub
         draft_count: draft_count,
         total_word_count: total_words,
         is_author: guardian.is_publication_author?(publication),
-        is_editor: guardian.is_publication_editor?(publication)
+        is_editor: guardian.is_publication_editor?(publication),
       }
     end
 
@@ -274,8 +580,8 @@ module Bookclub
 
       sorted_chapters =
         chapters
-        .map { |ch| serialize_author_chapter(ch) }
-        .sort_by { |c| [c[:number] || 9999, c[:id]] }
+          .map { |ch| serialize_author_chapter(ch) }
+          .sort_by { |c| [c[:number] || 9999, c[:id]] }
 
       {
         id: publication.id,
@@ -290,7 +596,7 @@ module Bookclub
         feedback_settings: publication.custom_fields[PUBLICATION_FEEDBACK_SETTINGS],
         chapters: sorted_chapters,
         is_author: guardian.is_publication_author?(publication),
-        is_editor: guardian.is_publication_editor?(publication)
+        is_editor: guardian.is_publication_editor?(publication),
       }
     end
 
@@ -307,9 +613,9 @@ module Bookclub
         title: chapter.name,
         slug: chapter.slug,
         number: chapter.custom_fields[CHAPTER_NUMBER]&.to_i,
-        type: chapter.custom_fields[CHAPTER_TYPE] || 'chapter',
+        type: chapter.custom_fields[CHAPTER_TYPE] || "chapter",
         published: chapter.custom_fields[CHAPTER_PUBLISHED] != false,
-        access_level: chapter.custom_fields[CHAPTER_ACCESS_LEVEL] || 'free',
+        access_level: chapter.custom_fields[CHAPTER_ACCESS_LEVEL] || "free",
         word_count: chapter.custom_fields[CHAPTER_WORD_COUNT].to_i,
         summary: chapter.custom_fields[CHAPTER_SUMMARY],
         review_status: chapter.custom_fields[CHAPTER_REVIEW_STATUS],
@@ -318,7 +624,7 @@ module Bookclub
         discussion_count: [discussion_count, 0].max,
         posts_count: posts_count,
         content_topic_id: content_topic&.id,
-        views: content_topic&.views || 0
+        views: content_topic&.views || 0,
       }
     end
 
@@ -333,7 +639,7 @@ module Bookclub
           chapters.map do |ch|
             content_topic = find_content_topic(ch)
             { id: ch.id, title: ch.name, views: content_topic&.views || 0 }
-          end
+          end,
       }
     end
 
@@ -344,11 +650,11 @@ module Bookclub
       # NOTE: Discourse stores boolean true as "t" in custom fields
       discussion_topics =
         Topic
-        .where(category_id: chapters.pluck(:id))
-        .joins(
-          "LEFT JOIN topic_custom_fields tcf ON tcf.topic_id = topics.id AND tcf.name = '#{CONTENT_TOPIC}'"
-        )
-        .where('tcf.value IS NULL OR tcf.value NOT IN (?)', %w[t true])
+          .where(category_id: chapters.pluck(:id))
+          .joins(
+            "LEFT JOIN topic_custom_fields tcf ON tcf.topic_id = topics.id AND tcf.name = '#{CONTENT_TOPIC}'",
+          )
+          .where("tcf.value IS NULL OR tcf.value NOT IN (?)", %w[t true])
 
       posts = Post.where(topic_id: discussion_topics.pluck(:id))
 
@@ -356,33 +662,33 @@ module Bookclub
       # A question is a topic without any replies from the publication authors
       unanswered_questions =
         discussion_topics
-        .where('topics.posts_count > 1') # Has at least one reply (but maybe not from author)
-        .select do |topic|
-          # Check if any author has replied
-          Post.where(topic_id: topic.id).where(user_id: publication_author_ids).none?
-        end
+          .where("topics.posts_count > 1") # Has at least one reply (but maybe not from author)
+          .select do |topic|
+            # Check if any author has replied
+            Post.where(topic_id: topic.id).where(user_id: publication_author_ids).none?
+          end
 
       # Recent unanswered questions
       recent_unanswered =
         unanswered_questions
-        .sort_by(&:created_at)
-        .reverse
-        .take(5)
-        .map do |topic|
-          chapter = chapters.find { |ch| ch.id == topic.category_id }
-          {
-            id: topic.id,
-            title: topic.title,
-            chapter: {
-              id: chapter&.id,
-              title: chapter&.name,
-              number: chapter&.custom_fields&.[](CHAPTER_NUMBER)&.to_i
-            },
-            posts_count: topic.posts_count,
-            created_at: topic.created_at,
-            last_posted_at: topic.last_posted_at
-          }
-        end
+          .sort_by(&:created_at)
+          .reverse
+          .take(5)
+          .map do |topic|
+            chapter = chapters.find { |ch| ch.id == topic.category_id }
+            {
+              id: topic.id,
+              title: topic.title,
+              chapter: {
+                id: chapter&.id,
+                title: chapter&.name,
+                number: chapter&.custom_fields&.[](CHAPTER_NUMBER)&.to_i,
+              },
+              posts_count: topic.posts_count,
+              created_at: topic.created_at,
+              last_posted_at: topic.last_posted_at,
+            }
+          end
 
       {
         total_discussions: discussion_topics.count,
@@ -404,17 +710,17 @@ module Bookclub
                 chapter: {
                   id: chapter&.id,
                   title: chapter&.name,
-                  number: chapter&.custom_fields&.[](CHAPTER_NUMBER)&.to_i
+                  number: chapter&.custom_fields&.[](CHAPTER_NUMBER)&.to_i,
                 },
                 excerpt: post.excerpt(200),
                 user: {
                   id: post.user.id,
                   username: post.user.username,
-                  avatar_url: post.user.avatar_template_url.gsub('{size}', '45')
+                  avatar_url: post.user.avatar_template_url.gsub("{size}", "45"),
                 },
-                created_at: post.created_at
+                created_at: post.created_at,
               }
-            end
+            end,
       }
     end
 
@@ -423,8 +729,12 @@ module Bookclub
       publication_slug = publication.custom_fields[PUBLICATION_SLUG]
 
       # Find all users who have reading progress for this publication
+      # Use LIKE query as a fallback since JSONB ? operator may not work in all cases
       user_progress_data =
-        UserCustomField.where(name: READING_PROGRESS).where('value::jsonb ? ?', publication_slug)
+        UserCustomField.where(name: READING_PROGRESS).where(
+          "value LIKE ?",
+          "%\"#{publication_slug}\"%",
+        )
 
       total_readers = user_progress_data.count
       completed_readers = 0
@@ -439,7 +749,7 @@ module Bookclub
         pub_progress = progress[publication_slug]
         next unless pub_progress
 
-        completed_chapters = pub_progress['completed'] || []
+        completed_chapters = pub_progress["completed"] || []
         total_chapters = chapters.count
 
         if total_chapters.positive?
@@ -454,7 +764,7 @@ module Bookclub
           if completed_chapters.include?(chapter.id)
             chapter_progress[chapter.id][:completed] += 1
             chapter_progress[chapter.id][:started] += 1
-          elsif pub_progress['current_content_id'] == chapter.id
+          elsif pub_progress["current_content_id"] == chapter.id
             chapter_progress[chapter.id][:started] += 1
           end
         end
@@ -481,7 +791,7 @@ module Bookclub
             number: chapter.custom_fields[CHAPTER_NUMBER]&.to_i,
             started: stats[:started],
             completed: stats[:completed],
-            completion_rate: completion_rate
+            completion_rate: completion_rate,
           }
         end
 
@@ -489,7 +799,7 @@ module Bookclub
         total_readers: total_readers,
         completed_readers: completed_readers,
         average_progress: average_progress,
-        by_chapter: by_chapter
+        by_chapter: by_chapter,
       }
     end
   end

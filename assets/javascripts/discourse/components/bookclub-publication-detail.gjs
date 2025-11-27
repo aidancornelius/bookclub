@@ -7,6 +7,7 @@ import DButton from "discourse/components/d-button";
 import icon from "discourse/helpers/d-icon";
 import { eq } from "discourse/truth-helpers";
 import BookclubChapterList from "./bookclub-chapter-list";
+import BookclubPublicationSettings from "./bookclub-publication-settings";
 import BookclubPublicationStats from "./bookclub-publication-stats";
 
 /**
@@ -17,6 +18,7 @@ export default class BookclubPublicationDetail extends Component {
   @service router;
 
   @tracked activeTab = "chapters";
+  @tracked publication = this.args.publication;
 
   /**
    * Switch to chapters tab
@@ -35,6 +37,14 @@ export default class BookclubPublicationDetail extends Component {
   }
 
   /**
+   * Switch to settings tab
+   */
+  @action
+  showSettings() {
+    this.activeTab = "settings";
+  }
+
+  /**
    * Navigate back to dashboard
    */
   @action
@@ -47,63 +57,53 @@ export default class BookclubPublicationDetail extends Component {
    */
   @action
   viewPublicPage() {
-    window.location.href = `/book/${this.args.publication.slug}`;
+    window.location.href = `/book/${this.publication.slug}`;
+  }
+
+  /**
+   * Handle publication update from settings
+   * @param {Object} updatedPublication - Updated publication data
+   */
+  @action
+  handlePublicationUpdate(updatedPublication) {
+    this.publication = updatedPublication;
   }
 
   <template>
-    <div class="bookclub-publication-detail">
-      <div class="bookclub-publication-detail__header">
-        <div class="bookclub-publication-detail__header-top">
+    <div class="bookclub-pub-detail">
+      <header class="bookclub-pub-detail__header">
+        <button
+          type="button"
+          class="bookclub-pub-detail__back"
+          {{on "click" this.backToDashboard}}
+        >
+          {{icon "arrow-left"}}
+          Back to dashboard
+        </button>
+
+        <div class="bookclub-pub-detail__title-row">
+          <h1 class="bookclub-pub-detail__title">
+            {{this.publication.name}}
+          </h1>
           <DButton
-            @action={{this.backToDashboard}}
-            @icon="arrow-left"
-            @label="bookclub.author.back_to_dashboard"
+            @action={{this.viewPublicPage}}
+            @icon="link"
+            @label="bookclub.author.view_public"
             class="btn-flat"
           />
         </div>
 
-        <div class="bookclub-publication-detail__header-content">
-          {{#if @publication.cover_url}}
-            <div class="bookclub-publication-detail__cover">
-              <img src={{@publication.cover_url}} alt={{@publication.name}} />
-            </div>
-          {{/if}}
+        {{#if this.publication.description}}
+          <p class="bookclub-pub-detail__description">
+            {{this.publication.description}}
+          </p>
+        {{/if}}
+      </header>
 
-          <div class="bookclub-publication-detail__info">
-            <h1 class="bookclub-publication-detail__title">
-              {{@publication.name}}
-            </h1>
-
-            {{#if @publication.description}}
-              <p class="bookclub-publication-detail__description">
-                {{@publication.description}}
-              </p>
-            {{/if}}
-
-            <div class="bookclub-publication-detail__meta">
-              <span class="bookclub-publication-detail__type">
-                {{icon "book"}}
-                {{@publication.type}}
-              </span>
-            </div>
-
-            <div class="bookclub-publication-detail__actions">
-              <DButton
-                @action={{this.viewPublicPage}}
-                @label="bookclub.author.view_public"
-                @icon="link"
-                class="btn-default"
-              />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="bookclub-publication-detail__tabs">
+      <nav class="bookclub-pub-detail__nav">
         <button
           type="button"
-          class="bookclub-publication-detail__tab
-            {{if (eq this.activeTab 'chapters') 'active'}}"
+          class="bookclub-pub-detail__nav-item {{if (eq this.activeTab 'chapters') 'bookclub-pub-detail__nav-item--active'}}"
           {{on "click" this.showChapters}}
         >
           {{icon "list-ul"}}
@@ -111,25 +111,37 @@ export default class BookclubPublicationDetail extends Component {
         </button>
         <button
           type="button"
-          class="bookclub-publication-detail__tab
-            {{if (eq this.activeTab 'stats') 'active'}}"
+          class="bookclub-pub-detail__nav-item {{if (eq this.activeTab 'stats') 'bookclub-pub-detail__nav-item--active'}}"
           {{on "click" this.showStats}}
         >
-          {{icon "chart-line"}}
+          {{icon "chart-bar"}}
           Statistics
         </button>
-      </div>
+        <button
+          type="button"
+          class="bookclub-pub-detail__nav-item {{if (eq this.activeTab 'settings') 'bookclub-pub-detail__nav-item--active'}}"
+          {{on "click" this.showSettings}}
+        >
+          {{icon "gear"}}
+          Settings
+        </button>
+      </nav>
 
-      <div class="bookclub-publication-detail__content">
+      <div class="bookclub-pub-detail__content">
         {{#if (eq this.activeTab "chapters")}}
           <BookclubChapterList
-            @publicationSlug={{@publication.slug}}
-            @chapters={{@publication.chapters}}
+            @publicationSlug={{this.publication.slug}}
+            @chapters={{this.publication.chapters}}
           />
         {{else if (eq this.activeTab "stats")}}
           <BookclubPublicationStats
-            @publicationSlug={{@publication.slug}}
-            @analytics={{@publication.analytics}}
+            @publicationSlug={{this.publication.slug}}
+            @analytics={{this.publication.analytics}}
+          />
+        {{else if (eq this.activeTab "settings")}}
+          <BookclubPublicationSettings
+            @publication={{this.publication}}
+            @onUpdate={{this.handlePublicationUpdate}}
           />
         {{/if}}
       </div>

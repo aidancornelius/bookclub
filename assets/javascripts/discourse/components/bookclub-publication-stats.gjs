@@ -1,11 +1,11 @@
 import Component from "@glimmer/component";
 import { tracked } from "@glimmer/tracking";
+import { fn } from "@ember/helper";
+import { on } from "@ember/modifier";
 import { action } from "@ember/object";
 import { service } from "@ember/service";
+import ageWithTooltip from "discourse/helpers/age-with-tooltip";
 import icon from "discourse/helpers/d-icon";
-import { formatDate } from "discourse/lib/formatter";
-import BookclubActivityMetrics from "./bookclub-activity-metrics";
-import BookclubReaderProgress from "./bookclub-reader-progress";
 
 /**
  * Publication statistics component showing engagement metrics
@@ -15,10 +15,12 @@ import BookclubReaderProgress from "./bookclub-reader-progress";
  */
 export default class BookclubPublicationStats extends Component {
   @service bookclubAuthor;
+  @service router;
 
   @tracked analytics = this.args.analytics || null;
   @tracked loading = !this.args.analytics;
   @tracked error = null;
+  @tracked activityTab = "recent";
 
   constructor() {
     super(...arguments);
@@ -46,20 +48,28 @@ export default class BookclubPublicationStats extends Component {
   }
 
   /**
-   * Reload analytics data
+   * Show recent activity tab
    */
   @action
-  async reload() {
-    await this.loadAnalytics();
+  showRecent() {
+    this.activityTab = "recent";
   }
 
   /**
-   * Format a date for display
-   * @param {string} date - ISO date string
-   * @returns {string} Formatted date
+   * Show unanswered questions tab
    */
-  formatDate(date) {
-    return formatDate(date, { format: "tiny" });
+  @action
+  showUnanswered() {
+    this.activityTab = "unanswered";
+  }
+
+  /**
+   * Navigate to topic
+   * @param {number} topicId - Topic ID
+   */
+  @action
+  viewTopic(topicId) {
+    window.location.href = `/t/${topicId}`;
   }
 
   /**
@@ -72,138 +82,212 @@ export default class BookclubPublicationStats extends Component {
   }
 
   /**
-   * Get avatar URL for a user
-   * @param {Object} user - User object with avatar_url
-   * @returns {string} Avatar URL
+   * Check if there's any engagement data
+   * @returns {boolean} True if there's engagement
    */
-  getAvatarUrl(user) {
-    return user.avatar_url;
+  get hasEngagement() {
+    if (!this.analytics) return false;
+    return (
+      this.analytics.views?.total > 0 ||
+      this.analytics.engagement?.total_posts > 0 ||
+      this.analytics.reader_progress?.total_readers > 0
+    );
+  }
+
+  /**
+   * Get unanswered count
+   * @returns {number} Unanswered questions count
+   */
+  get unansweredCount() {
+    return this.analytics?.engagement?.unanswered_questions_count || 0;
+  }
+
+  /**
+   * Check if showing recent tab
+   * @returns {boolean} True if recent tab is active
+   */
+  get isRecentTab() {
+    return this.activityTab === "recent";
+  }
+
+  /**
+   * Check if showing unanswered tab
+   * @returns {boolean} True if unanswered tab is active
+   */
+  get isUnansweredTab() {
+    return this.activityTab === "unanswered";
   }
 
   <template>
-    <div class="bookclub-publication-stats">
+    <div class="bookclub-stats">
       {{#if this.loading}}
-        <div class="bookclub-publication-stats__loading">
+        <div class="bookclub-stats__loading">
           {{icon "spinner" class="spinner"}}
-          Loading analytics...
+          <span>Loading analytics...</span>
         </div>
       {{else if this.error}}
-        <div class="bookclub-publication-stats__error">
+        <div class="bookclub-stats__error">
           {{icon "triangle-exclamation"}}
           {{this.error}}
         </div>
       {{else if this.analytics}}
-        <div class="bookclub-publication-stats__sections">
-          {{! Overview Stats }}
-          <div class="bookclub-stats-section">
-            <h3 class="bookclub-stats-section__title">
-              {{icon "chart-line"}}
-              Overview
-            </h3>
+        {{#if this.hasEngagement}}
+          <div class="bookclub-stats__overview">
+            <div class="bookclub-stats__metric">
+              <span class="bookclub-stats__metric-value">
+                {{this.formatNumber this.analytics.views.total}}
+              </span>
+              <span class="bookclub-stats__metric-label">views</span>
+            </div>
 
-            <div class="bookclub-stats-grid">
-              <div class="bookclub-stat-card">
-                <div class="bookclub-stat-card__icon">
-                  {{icon "eye"}}
-                </div>
-                <div class="bookclub-stat-card__content">
-                  <div class="bookclub-stat-card__value">
-                    {{this.formatNumber this.analytics.views.total}}
-                  </div>
-                  <div class="bookclub-stat-card__label">
-                    Total views
-                  </div>
-                </div>
-              </div>
+            <div class="bookclub-stats__metric">
+              <span class="bookclub-stats__metric-value">
+                {{this.formatNumber this.analytics.engagement.total_posts}}
+              </span>
+              <span class="bookclub-stats__metric-label">comments</span>
+            </div>
 
-              <div class="bookclub-stat-card">
-                <div class="bookclub-stat-card__icon">
-                  {{icon "comment"}}
-                </div>
-                <div class="bookclub-stat-card__content">
-                  <div class="bookclub-stat-card__value">
-                    {{this.formatNumber this.analytics.engagement.total_posts}}
-                  </div>
-                  <div class="bookclub-stat-card__label">
-                    Comments
-                  </div>
-                </div>
-              </div>
+            <div class="bookclub-stats__metric">
+              <span class="bookclub-stats__metric-value">
+                {{this.formatNumber this.analytics.engagement.unique_participants}}
+              </span>
+              <span class="bookclub-stats__metric-label">participants</span>
+            </div>
 
-              <div class="bookclub-stat-card">
-                <div class="bookclub-stat-card__icon">
-                  {{icon "users"}}
-                </div>
-                <div class="bookclub-stat-card__content">
-                  <div class="bookclub-stat-card__value">
-                    {{this.formatNumber
-                      this.analytics.engagement.unique_participants
-                    }}
-                  </div>
-                  <div class="bookclub-stat-card__label">
-                    Unique participants
-                  </div>
-                </div>
-              </div>
-
-              <div class="bookclub-stat-card">
-                <div class="bookclub-stat-card__icon">
-                  {{icon "book-open-reader"}}
-                </div>
-                <div class="bookclub-stat-card__content">
-                  <div class="bookclub-stat-card__value">
-                    {{this.formatNumber
-                      this.analytics.reader_progress.total_readers
-                    }}
-                  </div>
-                  <div class="bookclub-stat-card__label">
-                    Active readers
-                  </div>
-                </div>
-              </div>
+            <div class="bookclub-stats__metric">
+              <span class="bookclub-stats__metric-value">
+                {{this.formatNumber this.analytics.reader_progress.total_readers}}
+              </span>
+              <span class="bookclub-stats__metric-label">readers</span>
             </div>
           </div>
 
-          {{! Activity Metrics }}
-          <div class="bookclub-stats-section">
-            <BookclubActivityMetrics @analytics={{this.analytics}} />
-          </div>
+          <div class="bookclub-stats__section">
+            <div class="bookclub-stats__section-header">
+              <h3 class="bookclub-stats__section-title">Activity</h3>
+              <div class="bookclub-stats__tabs">
+                <button
+                  type="button"
+                  class="bookclub-stats__tab {{if this.isRecentTab 'bookclub-stats__tab--active'}}"
+                  {{on "click" this.showRecent}}
+                >
+                  Recent
+                </button>
+                <button
+                  type="button"
+                  class="bookclub-stats__tab {{if this.isUnansweredTab 'bookclub-stats__tab--active'}}"
+                  {{on "click" this.showUnanswered}}
+                >
+                  Needs reply
+                  {{#if this.unansweredCount}}
+                    <span class="bookclub-stats__tab-badge">{{this.unansweredCount}}</span>
+                  {{/if}}
+                </button>
+              </div>
+            </div>
 
-          {{! Reader Progress }}
-          <div class="bookclub-stats-section">
-            <BookclubReaderProgress @analytics={{this.analytics}} />
-          </div>
-
-          {{! Views by Chapter }}
-          {{#if this.analytics.views.by_chapter.length}}
-            <div class="bookclub-stats-section">
-              <h3 class="bookclub-stats-section__title">
-                {{icon "chart-bar"}}
-                Views by chapter
-              </h3>
-
-              <div class="bookclub-content-views">
-                {{#each this.analytics.views.by_chapter as |chapter|}}
-                  <div class="bookclub-content-views__item">
-                    <div class="bookclub-content-views__title">
-                      {{chapter.title}}
+            {{#if this.isRecentTab}}
+              {{#if this.analytics.engagement.recent_activity.length}}
+                <div class="bookclub-stats__activity-list">
+                  {{#each this.analytics.engagement.recent_activity as |activity|}}
+                    <div
+                      class="bookclub-stats__activity-item"
+                      role="button"
+                      {{on "click" (fn this.viewTopic activity.topic_id)}}
+                    >
+                      <img
+                        src={{activity.user.avatar_url}}
+                        alt={{activity.user.username}}
+                        class="bookclub-stats__activity-avatar"
+                      />
+                      <div class="bookclub-stats__activity-content">
+                        <div class="bookclub-stats__activity-header">
+                          <span class="bookclub-stats__activity-user">{{activity.user.username}}</span>
+                          <span class="bookclub-stats__activity-time">{{ageWithTooltip activity.created_at}}</span>
+                        </div>
+                        <div class="bookclub-stats__activity-excerpt">
+                          {{activity.excerpt}}
+                        </div>
+                      </div>
                     </div>
-                    <div class="bookclub-content-views__bar">
+                  {{/each}}
+                </div>
+              {{else}}
+                <div class="bookclub-stats__empty">
+                  <p>No recent activity yet.</p>
+                </div>
+              {{/if}}
+            {{else}}
+              {{#if this.analytics.engagement.unanswered_questions.length}}
+                <div class="bookclub-stats__activity-list">
+                  {{#each this.analytics.engagement.unanswered_questions as |question|}}
+                    <div
+                      class="bookclub-stats__activity-item bookclub-stats__activity-item--unanswered"
+                      role="button"
+                      {{on "click" (fn this.viewTopic question.id)}}
+                    >
+                      <div class="bookclub-stats__activity-icon">
+                        {{icon "circle-question"}}
+                      </div>
+                      <div class="bookclub-stats__activity-content">
+                        <div class="bookclub-stats__activity-title">
+                          {{question.title}}
+                        </div>
+                        <div class="bookclub-stats__activity-meta">
+                          {{question.posts_count}} replies
+                          · {{ageWithTooltip question.last_posted_at}}
+                        </div>
+                      </div>
+                    </div>
+                  {{/each}}
+                </div>
+              {{else}}
+                <div class="bookclub-stats__empty bookclub-stats__empty--success">
+                  {{icon "circle-check"}}
+                  <p>All questions answered!</p>
+                </div>
+              {{/if}}
+            {{/if}}
+          </div>
+
+          {{#if this.analytics.reader_progress.by_chapter.length}}
+            <div class="bookclub-stats__section">
+              <h3 class="bookclub-stats__section-title">Reader progress</h3>
+              <div class="bookclub-stats__progress-summary">
+                <span>{{this.analytics.reader_progress.completed_readers}} completed</span>
+                <span class="bookclub-stats__progress-avg">
+                  {{this.analytics.reader_progress.average_progress}}% average
+                </span>
+              </div>
+              <div class="bookclub-stats__progress-list">
+                {{#each this.analytics.reader_progress.by_chapter as |chapter|}}
+                  <div class="bookclub-stats__progress-item">
+                    <div class="bookclub-stats__progress-header">
+                      <span class="bookclub-stats__progress-title">
+                        Ch. {{chapter.number}}
+                      </span>
+                      <span class="bookclub-stats__progress-rate">
+                        {{chapter.completion_rate}}%
+                      </span>
+                    </div>
+                    <div class="bookclub-stats__progress-bar">
                       <div
-                        class="bookclub-content-views__bar-fill"
-                        style="width: 100%"
+                        class="bookclub-stats__progress-fill"
+                        style="width: {{chapter.completion_rate}}%"
                       ></div>
-                    </div>
-                    <div class="bookclub-content-views__value">
-                      {{this.formatNumber chapter.views}}
-                      views
                     </div>
                   </div>
                 {{/each}}
               </div>
             </div>
           {{/if}}
-        </div>
+        {{else}}
+          <div class="bookclub-stats__empty-state">
+            {{icon "chart-bar"}}
+            <h3>No activity yet</h3>
+            <p>Statistics will appear as readers engage with your content.</p>
+          </div>
+        {{/if}}
       {{/if}}
     </div>
   </template>

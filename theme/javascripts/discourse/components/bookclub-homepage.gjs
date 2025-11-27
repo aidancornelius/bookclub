@@ -43,6 +43,11 @@ export default class BookclubHomepage extends Component {
     return `/book/${slug}`;
   };
 
+  getCategoryUrl = (category) => {
+    // Native Discourse category URL
+    return `/c/${category.slug}/${category.id}`;
+  };
+
   getPublicationType = (publication) => {
     // API returns type directly
     const type =
@@ -126,12 +131,12 @@ export default class BookclubHomepage extends Component {
   }
 
   get shouldShow() {
-    // Only show on the actual homepage, not on /latest or other discovery routes
-    const currentRoute = this.router.currentRouteName;
-    const isHomepage =
-      currentRoute === "discovery.index" ||
-      currentRoute === "index" ||
-      currentRoute === "discovery";
+    // Only show on the actual homepage ("/"), not on /latest or other discovery routes
+    // We check the URL path because route names like discovery.index get resolved
+    // to discovery.latest when latest is the default homepage
+    const currentUrl = this.router.currentURL;
+    // Match exactly "/" or "/?" with optional query params
+    const isHomepage = currentUrl === "/" || currentUrl.startsWith("/?");
     return isHomepage;
   }
 
@@ -303,7 +308,7 @@ export default class BookclubHomepage extends Component {
             <div class="bookclub-forums-list">
               {{#each this.forums as |forum|}}
                 <a
-                  href={{this.getPublicationUrl forum}}
+                  href={{this.getCategoryUrl forum}}
                   class="bookclub-forum-item"
                 >
                   <span
@@ -345,7 +350,7 @@ export default class BookclubHomepage extends Component {
                       style={{this.getCategoryColorStyle group.category}}
                     ></span>
                     <a
-                      href={{this.getPublicationUrl group.category}}
+                      href={{this.getCategoryUrl group.category}}
                       class="group-name"
                     >
                       {{group.category.name}}

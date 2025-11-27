@@ -23,6 +23,27 @@ export default class BookclubAuthorService extends Service {
   }
 
   /**
+   * Create a new publication (admin only)
+   * @param {Object} data - Publication data
+   * @param {string} data.name - Publication name
+   * @param {string} data.type - Publication type (book, journal)
+   * @param {string} data.slug - URL slug (optional, auto-generated from name)
+   * @param {string} data.description - Description (optional)
+   * @returns {Promise<Object>} Promise resolving to created publication
+   */
+  async createPublication(data) {
+    try {
+      return await ajax("/bookclub/author/publications.json", {
+        type: "POST",
+        data,
+      });
+    } catch (error) {
+      popupAjaxError(error);
+      throw error;
+    }
+  }
+
+  /**
    * Fetch detailed publication data including contents
    * @param {string} publicationSlug - The publication slug
    * @returns {Promise<Object>} Promise resolving to publication details
@@ -33,6 +54,32 @@ export default class BookclubAuthorService extends Service {
         `/bookclub/author/publications/${publicationSlug}.json`,
         {
           type: "GET",
+        }
+      );
+    } catch (error) {
+      popupAjaxError(error);
+      throw error;
+    }
+  }
+
+  /**
+   * Update publication metadata
+   * @param {string} publicationSlug - The publication slug
+   * @param {Object} data - Updated publication data
+   * @param {string} data.name - Publication name
+   * @param {string} data.type - Publication type (book, journal)
+   * @param {string} data.description - Description
+   * @param {string} data.cover_url - Cover image URL
+   * @param {string} data.new_slug - New URL slug (optional)
+   * @returns {Promise<Object>} Promise resolving to updated publication
+   */
+  async updatePublication(publicationSlug, data) {
+    try {
+      return await ajax(
+        `/bookclub/author/publications/${publicationSlug}.json`,
+        {
+          type: "PUT",
+          data,
         }
       );
     } catch (error) {
@@ -162,5 +209,81 @@ export default class BookclubAuthorService extends Service {
    */
   async togglePublished(publicationSlug, contentNumber, published) {
     return this.updateContent(publicationSlug, contentNumber, { published });
+  }
+
+  /**
+   * Import a book from an uploaded file (creates new publication)
+   * @param {File} file - The file to import
+   * @param {Object} options - Import options
+   * @param {string} options.slug - Custom slug for the publication
+   * @param {boolean} options.publish - Whether to publish chapters immediately
+   * @param {string} options.accessLevel - Default access level for chapters
+   * @returns {Promise<Object>} Promise resolving to import result
+   */
+  async importBook(file, options = {}) {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    if (options.slug) {
+      formData.append("slug", options.slug);
+    }
+    if (options.publish) {
+      formData.append("publish", "true");
+    }
+    if (options.accessLevel) {
+      formData.append("access_level", options.accessLevel);
+    }
+
+    try {
+      return await ajax("/bookclub/author/import.json", {
+        type: "POST",
+        data: formData,
+        processData: false,
+        contentType: false,
+      });
+    } catch (error) {
+      popupAjaxError(error);
+      throw error;
+    }
+  }
+
+  /**
+   * Re-import/update an existing publication from an uploaded file
+   * @param {string} publicationSlug - The publication slug
+   * @param {File} file - The file to import
+   * @param {Object} options - Import options
+   * @param {boolean} options.replaceExisting - Replace existing chapters vs skip
+   * @param {boolean} options.publish - Whether to publish new chapters immediately
+   * @param {string} options.accessLevel - Default access level for new chapters
+   * @returns {Promise<Object>} Promise resolving to import result
+   */
+  async reimportBook(publicationSlug, file, options = {}) {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    if (options.replaceExisting) {
+      formData.append("replace_existing", "true");
+    }
+    if (options.publish) {
+      formData.append("publish", "true");
+    }
+    if (options.accessLevel) {
+      formData.append("access_level", options.accessLevel);
+    }
+
+    try {
+      return await ajax(
+        `/bookclub/author/publications/${publicationSlug}/import.json`,
+        {
+          type: "POST",
+          data: formData,
+          processData: false,
+          contentType: false,
+        }
+      );
+    } catch (error) {
+      popupAjaxError(error);
+      throw error;
+    }
   }
 }

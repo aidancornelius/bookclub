@@ -12,14 +12,22 @@ export default apiInitializer((api) => {
   // Show BookclubHomepage on discovery pages (above the topic list)
   api.renderInOutlet("discovery-list-controls-above", BookclubHomepage);
 
-  // Add/remove bookclub-homepage class based on route
-  // This class is used to hide the default topic list on homepage only
+  // Add/remove body classes based on route
   api.onPageChange((url) => {
+    // Homepage class - hide default topic list
     const isHomepage = url === "/" || url === "";
     if (isHomepage) {
       document.body.classList.add("bookclub-homepage");
     } else {
       document.body.classList.remove("bookclub-homepage");
+    }
+
+    // Book reading pages - hide footer and adjust layout
+    const isBookPage = url.startsWith("/book/");
+    if (isBookPage) {
+      document.body.classList.add("bookclub-reading-view");
+    } else {
+      document.body.classList.remove("bookclub-reading-view");
     }
   });
 

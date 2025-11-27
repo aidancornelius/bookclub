@@ -1,44 +1,44 @@
 # Bookclub
 
-A publishing platform built on Discourse for books, journals, and public scholarship.
+Bookclub is a cornily named publishing platform built on Discourse for books, journals, and public scholarship.
 
-Bookclub transforms Discourse into a reading-first platform where publications are the primary content, with community discussion integrated naturally around chapters and articles.
+Bookclub aims to make Discourse into a reading-first platform where publications are the primary content, with community discussion integrated naturally around chapters and articles.
 
 ## Features
 
 ### Reading experience
-- **Clean reading mode** with typography optimised for long-form content
-- **Chapter navigation** with keyboard shortcuts (n/p for next/previous, t for table of contents)
-- **Reading progress tracking** with scroll position memory and completion status
-- **Reading streaks** to encourage consistent engagement
-- **Dark mode support** with configurable font sizes
-- **Mobile-optimised** with bottom navigation and swipe gestures
+- Clean reading mode with typography optimised for longer-form content
+- Chapter navigation with keyboard shortcuts (n/p for next/previous, t for table of contents)
+- Reading progress tracking with scroll position memory and completion status
+- Reading streaks to encourage consistent engagement
+- Dark mode support with configurable font sizes
+- Mobile-optimised with bottom navigation and swipe gestures
 
 ### Publications
-- **Book and journal support** with chapters/articles as subcategories
-- **Table of contents** with progress indicators
-- **Access tiers** (free, member, supporter, patron) via group membership
-- **Author and editor roles** with dedicated dashboards
-- **Word count tracking** and reading time estimates
+- Book and journal support with chapters/articles as subcategories
+- Table of contents with progress indicators
+- Access tiers (free, member, supporter, patron) via group membership
+- Author and editor roles with dedicated dashboards
+- Word count tracking and reading time estimates
 
 ### Monetisation
-- **Stripe integration** via discourse-subscriptions plugin
-- **Tiered access control** mapping subscription levels to content
-- **Paywall prompts** for restricted content
-- **Subscription lifecycle handling** (renewals, cancellations, refunds)
+- Stripe integration via discourse-subscriptions plugin
+- Tiered access control mapping subscription levels to content
+- Paywall prompts for restricted content
+- Subscription lifecycle handling (renewals, cancellations, refunds)
 
 ### Author tools
-- **Publication dashboard** with chapter management
-- **Drag-and-drop chapter reordering**
-- **Activity metrics** showing recent comments and unanswered questions
-- **Reader progress summaries** with completion rates
-- **One-click chapter creation** with auto-numbering
+- Publication dashboard with chapter management
+- Drag-and-drop chapter reordering
+- Activity metrics showing recent comments and unanswered questions
+- Reader progress summaries with completion rates
+- One-click chapter creation with auto-numbering
 
 ### Community integration
-- **Inline discussions** below chapter content
-- **Native Discourse topics** for chapter discussions
-- **Sidebar integration** with Library section
-- **Homepage publications grid**
+- Inline discussions below chapter content
+- Native Discourse topics for chapter discussions
+- Sidebar integration with Library section
+- Homepage publications grid
 
 ## Installation
 
@@ -55,7 +55,7 @@ Add the plugin to your Discourse installation:
 cd /var/discourse
 ./launcher enter app
 cd /var/www/discourse/plugins
-git clone https://github.com/your-org/bookclub.git
+git clone https://github.com/aidancornelius/bookclub.git
 cd /var/www/discourse
 RAILS_ENV=production bundle exec rake assets:precompile
 ```
@@ -68,14 +68,14 @@ hooks:
     - exec:
         cd: $home/plugins
         cmd:
-          - git clone https://github.com/your-org/bookclub.git
+          - git clone https://github.com/aidancornelius/bookclub.git
 ```
 
 ### Theme installation
 
 The theme component is included in the `theme/` directory. Install it via the Discourse admin panel:
 
-1. Go to Admin → Customize → Themes
+1. Go to Admin → Customise → Themes
 2. Click "Install" → "From a git repository"
 3. Enter the repository URL with `/theme` suffix
 
@@ -143,7 +143,7 @@ Chapter access levels (`bookclub_chapter_access_level`) can be: `free`, `communi
 ```bash
 # Clone into Discourse plugins directory
 cd /path/to/discourse/plugins
-git clone https://github.com/your-org/bookclub.git
+git clone https://github.com/aidancornelius/bookclub.git
 
 # Symlink theme
 ln -s ../bookclub/theme ../themes/bookclub
@@ -173,10 +173,10 @@ npx eslint plugins/bookclub/assets/javascripts
 
 ### Data model
 
-- **Publications** are Discourse categories with `publication_enabled = true`
-- **Chapters** are subcategories of publications with `bookclub_chapter_enabled = true`
-- **Content** is a pinned topic within a chapter marked with `bookclub_content_topic = true`
-- **Discussions** are regular topics within the chapter subcategory
+- Publications are Discourse categories with `publication_enabled = true`
+- Chapters are subcategories of publications with `bookclub_chapter_enabled = true`
+- Content is a pinned topic within a chapter marked with `bookclub_content_topic = true`
+- Discussions are regular topics within the chapter subcategory
 
 ### Routes
 
@@ -196,7 +196,7 @@ npx eslint plugins/bookclub/assets/javascripts
 
 ## Stripe integration
 
-Bookclub integrates with the official `discourse-subscriptions` plugin for payment processing. It does not duplicate Stripe functionality but extends it with publication-specific logic.
+Bookclub integrates with the official `discourse-subscriptions` plugin for payment processing and extends it with publication-specific logic.
 
 ### Setup
 
@@ -230,5 +230,5 @@ This is the same licence as Discourse itself, ensuring compatibility and the fre
 
 ## Acknowledgements
 
-- Built on [Discourse](https://discourse.org), the civilised discussion platform
+- Built on [Discourse](https://discourse.org)
 - Payment integration via [discourse-subscriptions](https://github.com/discourse/discourse-subscriptions)

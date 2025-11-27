@@ -22,6 +22,11 @@ register_svg_icon 'moon'
 register_svg_icon 'text-height'
 register_svg_icon 'fire'
 register_svg_icon 'circle-half-stroke'
+register_svg_icon 'file-lines'
+register_svg_icon 'file-zipper'
+register_svg_icon 'folder'
+register_svg_icon 'file-check'
+register_svg_icon 'upload'
 
 module ::Bookclub
   PLUGIN_NAME = 'bookclub'
@@ -93,6 +98,8 @@ end
 
 require_relative 'lib/bookclub/engine'
 require_relative 'lib/bookclub/subscription_hooks'
+require_relative 'lib/bookclub/book_parser'
+require_relative 'lib/bookclub/book_importer'
 
 after_initialize do
   # -----------------------------------------------------------------
@@ -180,67 +187,76 @@ after_initialize do
   # Serializer extensions - expose publication data to frontend
   # -----------------------------------------------------------------
 
+  # Helper to get custom field value, preferring preloaded but falling back to direct access
+  # This ensures fields are available both when Site preloads them and when accessed individually
+  add_to_class(:category, :bookclub_custom_field) do |field_name|
+    if preloaded_custom_fields
+      preloaded_custom_fields[field_name]
+    else
+      custom_fields[field_name]
+    end
+  end
+
   # Add publication fields to category serializer
-  # Use safe navigation to handle cases where preloaded_custom_fields is nil
   add_to_serializer(:basic_category, :publication_enabled) do
-    object.preloaded_custom_fields&.[](Bookclub::PUBLICATION_ENABLED)
+    object.bookclub_custom_field(Bookclub::PUBLICATION_ENABLED)
   end
 
   add_to_serializer(:basic_category, :publication_type) do
-    object.preloaded_custom_fields&.[](Bookclub::PUBLICATION_TYPE)
+    object.bookclub_custom_field(Bookclub::PUBLICATION_TYPE)
   end
 
   add_to_serializer(:basic_category, :publication_slug) do
-    object.preloaded_custom_fields&.[](Bookclub::PUBLICATION_SLUG)
+    object.bookclub_custom_field(Bookclub::PUBLICATION_SLUG)
   end
 
   add_to_serializer(:basic_category, :publication_cover_url) do
-    object.preloaded_custom_fields&.[](Bookclub::PUBLICATION_COVER_URL)
+    object.bookclub_custom_field(Bookclub::PUBLICATION_COVER_URL)
   end
 
   add_to_serializer(:basic_category, :publication_description) do
-    object.preloaded_custom_fields&.[](Bookclub::PUBLICATION_DESCRIPTION)
+    object.bookclub_custom_field(Bookclub::PUBLICATION_DESCRIPTION)
   end
 
   add_to_serializer(:basic_category, :publication_author_ids) do
-    object.preloaded_custom_fields&.[](Bookclub::PUBLICATION_AUTHOR_IDS)
+    object.bookclub_custom_field(Bookclub::PUBLICATION_AUTHOR_IDS)
   end
 
   add_to_serializer(:basic_category, :publication_access_tiers) do
-    object.preloaded_custom_fields&.[](Bookclub::PUBLICATION_ACCESS_TIERS)
+    object.bookclub_custom_field(Bookclub::PUBLICATION_ACCESS_TIERS)
   end
 
   add_to_serializer(:basic_category, :publication_feedback_settings) do
-    object.preloaded_custom_fields&.[](Bookclub::PUBLICATION_FEEDBACK_SETTINGS)
+    object.bookclub_custom_field(Bookclub::PUBLICATION_FEEDBACK_SETTINGS)
   end
 
   # Add chapter fields to category serializer (for chapter subcategories)
   add_to_serializer(:basic_category, :chapter_enabled) do
-    object.preloaded_custom_fields&.[](Bookclub::CHAPTER_ENABLED)
+    object.bookclub_custom_field(Bookclub::CHAPTER_ENABLED)
   end
 
   add_to_serializer(:basic_category, :chapter_number) do
-    object.preloaded_custom_fields&.[](Bookclub::CHAPTER_NUMBER)
+    object.bookclub_custom_field(Bookclub::CHAPTER_NUMBER)
   end
 
   add_to_serializer(:basic_category, :chapter_type) do
-    object.preloaded_custom_fields&.[](Bookclub::CHAPTER_TYPE)
+    object.bookclub_custom_field(Bookclub::CHAPTER_TYPE)
   end
 
   add_to_serializer(:basic_category, :chapter_access_level) do
-    object.preloaded_custom_fields&.[](Bookclub::CHAPTER_ACCESS_LEVEL)
+    object.bookclub_custom_field(Bookclub::CHAPTER_ACCESS_LEVEL)
   end
 
   add_to_serializer(:basic_category, :chapter_published) do
-    object.preloaded_custom_fields&.[](Bookclub::CHAPTER_PUBLISHED)
+    object.bookclub_custom_field(Bookclub::CHAPTER_PUBLISHED)
   end
 
   add_to_serializer(:basic_category, :chapter_summary) do
-    object.preloaded_custom_fields&.[](Bookclub::CHAPTER_SUMMARY)
+    object.bookclub_custom_field(Bookclub::CHAPTER_SUMMARY)
   end
 
   add_to_serializer(:basic_category, :chapter_word_count) do
-    object.preloaded_custom_fields&.[](Bookclub::CHAPTER_WORD_COUNT)
+    object.bookclub_custom_field(Bookclub::CHAPTER_WORD_COUNT)
   end
 
   # Add content topic marker to topic serializers

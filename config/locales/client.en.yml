@@ -117,6 +117,10 @@ en:
         manage: "Manage"
         view_public: "View public page"
         back_to_dashboard: "Back to dashboard"
+        new_publication: "New publication"
+        import_book: "Import book"
+        create: "Create"
+        save_settings: "Save settings"
         new_chapter: "New chapter"
         create_chapter: "Create chapter"
         edit_chapter: "Edit chapter"
@@ -147,6 +151,11 @@ en:
         average_progress: "Average progress"
         progress_by_chapter: "Progress by chapter"
         no_reader_data: "No reader data yet. Progress will appear as readers engage with your content."
+
+      import:
+        import: "Import"
+        update: "Update"
+        view_publication: "View publication"
 
       stats:
         title: "Statistics"

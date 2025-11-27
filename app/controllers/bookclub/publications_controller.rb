@@ -7,7 +7,17 @@ module Bookclub
     def index
       publications =
         categories_with_custom_fields.select do |cat|
-          cat.custom_fields[PUBLICATION_ENABLED] && guardian.can_see?(cat)
+          next false unless cat.custom_fields[PUBLICATION_ENABLED] && guardian.can_see?(cat)
+
+          # Authors, editors, and admins can see all publications
+          is_author_or_editor =
+            guardian.is_publication_author?(cat) || guardian.is_publication_editor?(cat) ||
+              guardian.is_admin?
+
+          next true if is_author_or_editor
+
+          # Regular users only see publications with published content
+          has_published_content?(cat)
         end
 
       render json: { publications: publications.map { |pub| serialize_publication(pub) } }
@@ -15,11 +25,21 @@ module Bookclub
 
     def show
       respond_to do |format|
-        format.html { render 'default/empty' }
+        format.html { render "default/empty" }
         format.json do
           publication = find_publication_category(params[:slug])
           raise Discourse::NotFound unless publication
           raise Discourse::InvalidAccess unless guardian.can_see?(publication)
+
+          # Check if user can access this publication (authors/editors/admins can always access)
+          is_author_or_editor =
+            guardian.is_publication_author?(publication) ||
+              guardian.is_publication_editor?(publication) || guardian.is_admin?
+
+          # Regular users can only access publications with published content
+          unless is_author_or_editor || has_published_content?(publication)
+            raise Discourse::NotFound
+          end
 
           render json: serialize_publication_detail(publication)
         end
@@ -34,11 +54,11 @@ module Bookclub
 
       chapters = find_chapters(publication)
       render json: {
-        chapters:
-          chapters
-            .select { |ch| guardian.can_access_chapter?(ch) }
-            .map { |ch| serialize_chapter_summary(ch) }
-      }
+               chapters:
+                 chapters
+                   .select { |ch| guardian.can_access_chapter?(ch) }
+                   .map { |ch| serialize_chapter_summary(ch) },
+             }
     end
 
     def toc
@@ -56,11 +76,11 @@ module Bookclub
         id: publication.id,
         name: publication.name,
         slug: publication.custom_fields[PUBLICATION_SLUG] || publication.slug,
-        type: publication.custom_fields[PUBLICATION_TYPE] || 'book',
+        type: publication.custom_fields[PUBLICATION_TYPE] || "book",
         cover_url: publication.custom_fields[PUBLICATION_COVER_URL],
         description: truncate_description(publication.custom_fields[PUBLICATION_DESCRIPTION]),
         has_access: guardian.can_access_publication?(publication),
-        chapter_count: chapters.count
+        chapter_count: chapters.count,
       }
     end
 
@@ -69,7 +89,7 @@ module Bookclub
       # Only show published chapters in count
       chapters.select do |chapter|
         published = chapter.custom_fields[CHAPTER_PUBLISHED]
-        [true, 'true', 't'].include?(published)
+        [true, "true", "t"].include?(published)
       end
     end
 
@@ -82,7 +102,7 @@ module Bookclub
         id: publication.id,
         name: publication.name,
         slug: publication.custom_fields[PUBLICATION_SLUG] || publication.slug,
-        type: publication.custom_fields[PUBLICATION_TYPE] || 'book',
+        type: publication.custom_fields[PUBLICATION_TYPE] || "book",
         cover_url: publication.custom_fields[PUBLICATION_COVER_URL],
         description: publication.custom_fields[PUBLICATION_DESCRIPTION],
         identifier: publication.custom_fields[PUBLICATION_IDENTIFIER],
@@ -95,7 +115,7 @@ module Bookclub
         is_editor: guardian.is_publication_editor?(publication),
         toc: build_table_of_contents(publication),
         chapter_count: chapters.count,
-        total_word_count: total_word_count(chapters)
+        total_word_count: total_word_count(chapters),
       }
     end
 
@@ -109,7 +129,7 @@ module Bookclub
             id: user.id,
             username: user.username,
             name: user.name,
-            avatar_url: user.avatar_template_url.gsub('{size}', '90')
+            avatar_url: user.avatar_template_url.gsub("{size}", "90"),
           }
         end
     end
@@ -119,36 +139,36 @@ module Bookclub
       has_publication_access = guardian.can_access_publication?(publication)
       is_author_or_editor =
         guardian.is_publication_author?(publication) ||
-        guardian.is_publication_editor?(publication) || guardian.is_admin?
+          guardian.is_publication_editor?(publication) || guardian.is_admin?
 
       # Filter out unpublished chapters for non-authors/editors
       visible_chapters =
         chapters.select do |chapter|
           published = chapter.custom_fields[CHAPTER_PUBLISHED]
           # Custom fields store booleans as strings, so check for both
-          is_published = [true, 'true', 't'].include?(published)
+          is_published = [true, "true", "t"].include?(published)
           is_author_or_editor || is_published
         end
 
       visible_chapters.map do |chapter|
         access_level = chapter.custom_fields[CHAPTER_ACCESS_LEVEL]
-        is_free = access_level.blank? || access_level == 'free'
+        is_free = access_level.blank? || access_level == "free"
         has_chapter_access = has_publication_access && guardian.can_access_chapter?(chapter)
         published = chapter.custom_fields[CHAPTER_PUBLISHED]
-        is_published = [true, 'true', 't'].include?(published)
+        is_published = [true, "true", "t"].include?(published)
 
         {
           id: chapter.id,
           title: chapter.name,
           number: chapter.custom_fields[CHAPTER_NUMBER]&.to_i,
-          type: chapter.custom_fields[CHAPTER_TYPE] || 'chapter',
+          type: chapter.custom_fields[CHAPTER_TYPE] || "chapter",
           published: is_published,
-          access_level: access_level || 'free',
+          access_level: access_level || "free",
           word_count: chapter.custom_fields[CHAPTER_WORD_COUNT]&.to_i,
           summary: chapter.custom_fields[CHAPTER_SUMMARY],
           has_access: is_free || has_chapter_access,
           is_free: is_free,
-          slug: chapter.slug
+          slug: chapter.slug,
         }
       end
     end
@@ -159,13 +179,13 @@ module Bookclub
         title: chapter.name,
         slug: chapter.slug,
         number: chapter.custom_fields[CHAPTER_NUMBER]&.to_i,
-        type: chapter.custom_fields[CHAPTER_TYPE] || 'chapter',
+        type: chapter.custom_fields[CHAPTER_TYPE] || "chapter",
         published: chapter.custom_fields[CHAPTER_PUBLISHED] != false,
-        access_level: chapter.custom_fields[CHAPTER_ACCESS_LEVEL] || 'free',
+        access_level: chapter.custom_fields[CHAPTER_ACCESS_LEVEL] || "free",
         word_count: chapter.custom_fields[CHAPTER_WORD_COUNT]&.to_i,
         summary: chapter.custom_fields[CHAPTER_SUMMARY],
         contributors: chapter.custom_fields[CHAPTER_CONTRIBUTORS],
-        review_status: chapter.custom_fields[CHAPTER_REVIEW_STATUS]
+        review_status: chapter.custom_fields[CHAPTER_REVIEW_STATUS],
       }
     end
 
@@ -177,6 +197,15 @@ module Bookclub
       return nil if description.blank?
 
       description.length > 300 ? "#{description[0..297]}..." : description
+    end
+
+    # Check if a publication has any published chapters
+    def has_published_content?(publication)
+      chapters = find_chapters(publication)
+      chapters.any? do |chapter|
+        published = chapter.custom_fields[CHAPTER_PUBLISHED]
+        [true, "true", "t"].include?(published)
+      end
     end
   end
 end

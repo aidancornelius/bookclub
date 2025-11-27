@@ -331,10 +331,10 @@ export default class BookclubChapterList extends Component {
                   class="bookclub-badge {{this.getStatusBadgeClass content}}"
                 >
                   {{#if content.published}}
-                    {{icon "check-circle"}}
+                    {{icon "circle-check"}}
                     Published
                   {{else}}
-                    {{icon "file"}}
+                    {{icon "far-file"}}
                     Draft
                   {{/if}}
                 </span>
@@ -357,7 +357,7 @@ export default class BookclubChapterList extends Component {
 
                 <DButton
                   @action={{fn this.togglePublished content}}
-                  @icon={{if content.published "eye-slash" "eye"}}
+                  @icon={{if content.published "far-eye-slash" "eye"}}
                   @title={{if content.published "Unpublish" "Publish"}}
                   class="btn-flat btn-icon"
                 />

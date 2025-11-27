@@ -32,7 +32,9 @@ Bookclub::Engine.routes.draw do
   scope "/author", as: "author" do
     get "/" => "author_dashboard#index"
     get "/publications" => "author_dashboard#publications"
+    post "/publications" => "author_dashboard#create_publication"
     get "/publications/:slug" => "author_dashboard#publication"
+    put "/publications/:slug" => "author_dashboard#update_publication"
     get "/publications/:slug/analytics" => "author_dashboard#analytics"
     # Direct slug access (for client-side route compatibility)
     get "/:slug" => "author_dashboard#publication"
@@ -42,6 +44,10 @@ Bookclub::Engine.routes.draw do
     put "/publications/:slug/chapters/reorder" => "author_dashboard#reorder_chapters"
     put "/publications/:slug/chapters/:number" => "author_dashboard#update_chapter"
     delete "/publications/:slug/chapters/:number" => "author_dashboard#delete_chapter"
+
+    # Book import
+    post "/import" => "author_dashboard#import_book"
+    post "/publications/:slug/import" => "author_dashboard#reimport_book"
   end
 
   # Feedback/reviews (public scholarship)

@@ -35,5 +35,6 @@ export default class BookclubAuthorRoute extends DiscourseRoute {
   setupController(controller, model) {
     super.setupController(controller, model);
     controller.set("publications", model.publications);
+    controller.set("canCreate", model.can_create);
   }
 }
