@@ -1,5 +1,6 @@
 import { tracked } from "@glimmer/tracking";
 import Service, { service } from "@ember/service";
+import { ajax } from "discourse/lib/ajax";
 import KeyValueStore from "discourse/lib/key-value-store";
 import ReadingProgressSync from "../lib/reading-progress-sync";
 import SwipeNavigation from "../lib/swipe-navigation";
@@ -112,6 +113,12 @@ export default class BookclubReadingService extends Service {
    * Exit reading mode
    */
   exitReadingMode() {
+    // Save progress immediately before clearing (bypasses debounce)
+    if (this.progressSync) {
+      const scrollOffset = window.scrollY;
+      this.progressSync.saveProgressNow(this.scrollProgress, scrollOffset);
+    }
+
     this.isReadingMode = false;
     this.currentPublication = null;
     this.currentContent = null;
@@ -343,7 +350,6 @@ export default class BookclubReadingService extends Service {
     }
 
     try {
-      const { ajax } = await import("discourse/lib/ajax");
       const response = await ajax("/bookclub/reading-streak");
       this.readingStreak = response.streak;
     } catch (error) {
@@ -369,7 +375,6 @@ export default class BookclubReadingService extends Service {
     }
 
     try {
-      const { ajax } = await import("discourse/lib/ajax");
       await ajax("/bookclub/reading-bookmark.json", {
         method: "POST",
         data: { topic_id: topicId },

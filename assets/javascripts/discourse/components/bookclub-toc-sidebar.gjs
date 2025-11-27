@@ -66,7 +66,7 @@ export default class BookclubTocSidebar extends Component {
       this.router.transitionTo(
         "bookclub-content",
         this.publicationSlug,
-        item.number
+        item.slug
       );
       this.close();
     }
@@ -143,7 +143,7 @@ export default class BookclubTocSidebar extends Component {
           {{#each this.enrichedToc as |item|}}
             <li class="bookclub-toc__item">
               <a
-                href="/book/{{this.publicationSlug}}/{{item.number}}"
+                href="/book/{{this.publicationSlug}}/{{item.slug}}"
                 class="bookclub-toc__link
                   {{this.getStatusClass item.status}}
                   {{unless item.has_access 'bookclub-toc__link--locked'}}

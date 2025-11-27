@@ -3,6 +3,8 @@
 module Bookclub
   # Imports a parsed book into Discourse as a Bookclub publication
   class BookImporter
+    include Bookclub::ContentHelpers
+
     class ImportError < StandardError
     end
 
@@ -197,18 +199,7 @@ module Bookclub
       end
     end
 
-    def find_content_topic(chapter)
-      Topic
-        .joins(:topic_custom_fields)
-        .where(category_id: chapter.id)
-        .where(topic_custom_fields: { name: CONTENT_TOPIC, value: "t" })
-        .first ||
-        Topic
-          .joins(:topic_custom_fields)
-          .where(category_id: chapter.id)
-          .where(topic_custom_fields: { name: CONTENT_TOPIC, value: "true" })
-          .first
-    end
+    # find_content_topic method is provided by Bookclub::ContentHelpers
 
     def create_content_topic(chapter, chapter_data)
       topic =

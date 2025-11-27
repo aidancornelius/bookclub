@@ -578,9 +578,12 @@ module Bookclub
     def serialize_author_publication_detail(publication)
       chapters = find_chapters(publication)
 
+      # Batch load content topics to avoid N+1 queries
+      content_topics_by_chapter_id = batch_load_content_topics(chapters)
+
       sorted_chapters =
         chapters
-          .map { |ch| serialize_author_chapter(ch) }
+          .map { |ch| serialize_author_chapter(ch, content_topics_by_chapter_id) }
           .sort_by { |c| [c[:number] || 9999, c[:id]] }
 
       {
@@ -600,9 +603,15 @@ module Bookclub
       }
     end
 
-    def serialize_author_chapter(chapter)
+    def serialize_author_chapter(chapter, content_topics_by_chapter_id = nil)
       discussion_count = Topic.where(category_id: chapter.id).count - 1 # Exclude content topic
-      content_topic = find_content_topic(chapter)
+
+      # Use preloaded content topic if available to avoid N+1
+      content_topic = if content_topics_by_chapter_id
+        content_topics_by_chapter_id[chapter.id]
+      else
+        find_content_topic(chapter)
+      end
 
       # Calculate posts count from discussion topics
       discussion_topics = find_discussion_topics(chapter)
@@ -630,14 +639,19 @@ module Bookclub
 
     def calculate_views(publication)
       chapters = find_chapters(publication)
-      content_topics = chapters.map { |ch| find_content_topic(ch) }.compact
+
+      # Batch load content topics to avoid N+1 queries
+      content_topics_by_chapter_id = batch_load_content_topics(chapters)
+      content_topics = content_topics_by_chapter_id.values.compact
 
       {
         total: content_topics.sum(&:views),
-        last_7_days: content_topics.sum(&:views),
+        # Note: Discourse doesn't track views by time period, so we can't calculate last_7_days
+        # This would require custom view tracking or TopicViewItem analysis
+        last_7_days: nil,
         by_chapter:
           chapters.map do |ch|
-            content_topic = find_content_topic(ch)
+            content_topic = content_topics_by_chapter_id[ch.id]
             { id: ch.id, title: ch.name, views: content_topic&.views || 0 }
           end,
       }
@@ -801,6 +815,27 @@ module Bookclub
         average_progress: average_progress,
         by_chapter: by_chapter,
       }
+    end
+
+    # Batch load content topics for multiple chapters to avoid N+1 queries
+    def batch_load_content_topics(chapters)
+      return {} if chapters.empty?
+
+      chapter_ids = chapters.map(&:id)
+
+      # Load all content topics in a single query
+      content_topics = Topic
+        .where(category_id: chapter_ids)
+        .joins(
+          "INNER JOIN topic_custom_fields tcf ON tcf.topic_id = topics.id AND tcf.name = '#{CONTENT_TOPIC}'"
+        )
+        .where('tcf.value IN (?)', %w[t true])
+        .to_a
+
+      # Create a hash mapping chapter_id to content_topic
+      content_topics.each_with_object({}) do |topic, hash|
+        hash[topic.category_id] = topic
+      end
     end
   end
 end

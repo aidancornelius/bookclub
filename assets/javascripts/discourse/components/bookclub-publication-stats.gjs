@@ -40,7 +40,8 @@ export default class BookclubPublicationStats extends Component {
       this.analytics = await this.bookclubAuthor.fetchAnalytics(
         this.args.publicationSlug
       );
-    } catch {
+    } catch (error) {
+      console.error("Failed to load analytics:", error);
       this.error = "Failed to load analytics";
     } finally {
       this.loading = false;

@@ -47,18 +47,30 @@ module Bookclub
 
     def handle_checkout_completed(event)
       checkout_session = event[:data][:object]
-      return unless checkout_session[:status] == 'complete'
+      unless checkout_session[:status] == 'complete'
+        Rails.logger.info("[Bookclub] Skipping checkout - status is #{checkout_session[:status]}")
+        return
+      end
 
       email = checkout_session[:customer_email]
-      return unless email
+      unless email
+        Rails.logger.warn("[Bookclub] Checkout completed but no customer email provided")
+        return
+      end
 
-      user = User.find_by(username_or_email: email)
-      return unless user
+      user = User.find_by_email(email)
+      unless user
+        Rails.logger.warn("[Bookclub] No user found for email: #{email}")
+        return
+      end
 
       subscription_id = checkout_session[:subscription]
       product_id = extract_product_id_from_checkout(checkout_session)
 
-      return unless product_id
+      unless product_id
+        Rails.logger.warn("[Bookclub] Could not extract product_id from checkout session")
+        return
+      end
 
       invoke_subscription_integration(
         event_type: 'checkout.completed',
@@ -74,15 +86,27 @@ module Bookclub
     def handle_subscription_created_or_updated(event)
       subscription = event[:data][:object]
       status = subscription[:status]
-      return unless %w[complete active].include?(status)
+
+      # Handle active statuses that should grant access: complete, active, trialing
+      # Note: past_due is handled separately to preserve access while attempting payment recovery
+      unless %w[complete active trialing past_due].include?(status)
+        Rails.logger.info("[Bookclub] Skipping subscription with status: #{status}")
+        return
+      end
 
       customer_id = subscription[:customer]
       product_id = subscription.dig(:plan, :product)
 
-      return unless customer_id && product_id
+      unless customer_id && product_id
+        Rails.logger.warn("[Bookclub] Missing customer_id or product_id in subscription event")
+        return
+      end
 
       user = find_user_by_customer_id(customer_id)
-      return unless user
+      unless user
+        Rails.logger.warn("[Bookclub] No user found for customer_id: #{customer_id}")
+        return
+      end
 
       invoke_subscription_integration(
         event_type: 'subscription.updated',

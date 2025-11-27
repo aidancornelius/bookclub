@@ -130,7 +130,18 @@ module Bookclub
     private
 
     def enrich_progress(publication, pub_progress)
-      total_contents = Topic.where(category_id: publication.id).where(visible: true).count
+      # Get all chapters (subcategories) for this publication
+      chapters = find_chapters(publication)
+      chapter_ids = chapters.map(&:id)
+
+      # Count content topics across all chapter subcategories
+      # Content topics are marked with CONTENT_TOPIC custom field
+      total_contents = Topic
+        .where(category_id: chapter_ids, visible: true)
+        .joins("INNER JOIN topic_custom_fields tcf ON tcf.topic_id = topics.id AND tcf.name = '#{CONTENT_TOPIC}'")
+        .where('tcf.value IN (?)', %w[t true])
+        .count
+
       completed_count = (pub_progress['completed'] || []).length
 
       # Build per-chapter progress details

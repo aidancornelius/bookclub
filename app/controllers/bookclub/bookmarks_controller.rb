@@ -9,13 +9,14 @@ module Bookclub
     # GET /bookclub/reading-bookmark
     # Returns the user's current reading position bookmark (if any)
     def show
-      bookmark = find_reading_position_bookmark
+      reading_position = find_current_reading_position
+      bookmark = reading_position&.bookmarks&.where(user_id: current_user.id)&.first
 
-      if bookmark
+      if reading_position && bookmark
         render json: {
-          bookmark: serialize_bookmark(bookmark),
-          publication_slug: get_publication_slug(bookmark),
-          chapter_number: get_chapter_number(bookmark)
+          bookmark: serialize_bookmark(bookmark, reading_position),
+          publication_slug: reading_position.publication_slug,
+          chapter_number: reading_position.chapter_number
         }
       else
         render json: { bookmark: nil }
@@ -31,30 +32,32 @@ module Bookclub
 
       raise Discourse::NotFound unless topic
 
-      # Remove any existing reading position bookmarks
+      # Remove any existing reading position bookmarks for this user
       remove_existing_reading_bookmarks
 
-      # Create new bookmark using BookmarkManager
-      bookmark_manager = BookmarkManager.new(current_user)
-      result = bookmark_manager.create_for(
-        bookmarkable_id: topic.id,
-        bookmarkable_type: "Topic",
-        name: READING_POSITION_NAME,
-        options: {
-          auto_delete_preference: Bookmark::AUTO_DELETE_PREFERENCES[:never]
-        }
+      # Find or create reading position record
+      reading_position = BookclubReadingPosition.find_or_create_by!(
+        user_id: current_user.id,
+        topic_id: topic.id
       )
 
-      if bookmark_manager.errors.empty?
-        bookmark = Bookmark.find_by(id: result[:bookmark_id] || result.try(:id))
+      # Create bookmark for this reading position
+      bookmark = Bookmark.create(
+        user_id: current_user.id,
+        bookmarkable: reading_position,
+        name: READING_POSITION_NAME,
+        auto_delete_preference: 0 # NEVER
+      )
+
+      if bookmark.persisted?
         render json: {
           success: true,
-          bookmark: bookmark ? serialize_bookmark(bookmark) : nil
+          bookmark: serialize_bookmark(bookmark, reading_position)
         }
       else
         render json: {
           success: false,
-          errors: bookmark_manager.errors.full_messages
+          errors: bookmark.errors.full_messages
         }, status: :unprocessable_entity
       end
     end
@@ -68,56 +71,49 @@ module Bookclub
 
     private
 
-    def find_reading_position_bookmark
-      current_user.bookmarks
-        .where(name: READING_POSITION_NAME, bookmarkable_type: "Topic")
-        .order(created_at: :desc)
+    def find_current_reading_position
+      # Find the user's most recent reading position with a bookmark
+      BookclubReadingPosition
+        .joins(:bookmarks)
+        .where(user_id: current_user.id)
+        .where(bookmarks: { user_id: current_user.id, name: READING_POSITION_NAME })
+        .order("bookmarks.created_at DESC")
         .first
     end
 
     def remove_existing_reading_bookmarks
+      # Remove all reading position bookmarks for this user
       bookmarks = current_user.bookmarks
-        .where(name: READING_POSITION_NAME, bookmarkable_type: "Topic")
+        .where(bookmarkable_type: "BookclubReadingPosition", name: READING_POSITION_NAME)
 
       count = bookmarks.count
+
+      # Also clean up orphaned reading positions
+      reading_position_ids = bookmarks.pluck(:bookmarkable_id)
       bookmarks.destroy_all
+
+      # Remove reading positions that no longer have bookmarks
+      if reading_position_ids.any?
+        BookclubReadingPosition
+          .where(id: reading_position_ids, user_id: current_user.id)
+          .left_joins(:bookmarks)
+          .where(bookmarks: { id: nil })
+          .destroy_all
+      end
+
       count
     end
 
-    def get_publication_slug(bookmark)
-      return nil unless bookmark.bookmarkable_type == "Topic"
-
-      topic = Topic.find_by(id: bookmark.bookmarkable_id)
-      return nil unless topic
-
-      # Find the chapter (category) and its parent publication
-      chapter = topic.category
-      return nil unless chapter
-
-      publication = chapter.parent_category
-      return nil unless publication
-
-      publication.custom_fields[PUBLICATION_SLUG]
-    end
-
-    def get_chapter_number(bookmark)
-      return nil unless bookmark.bookmarkable_type == "Topic"
-
-      topic = Topic.find_by(id: bookmark.bookmarkable_id)
-      return nil unless topic
-
-      chapter = topic.category
-      return nil unless chapter
-
-      chapter.custom_fields[CHAPTER_NUMBER]&.to_i
-    end
-
-    def serialize_bookmark(bookmark)
+    def serialize_bookmark(bookmark, reading_position)
       {
         id: bookmark.id,
         name: bookmark.name,
         bookmarkable_type: bookmark.bookmarkable_type,
         bookmarkable_id: bookmark.bookmarkable_id,
+        topic_id: reading_position.topic_id,
+        publication_slug: reading_position.publication_slug,
+        chapter_number: reading_position.chapter_number,
+        bookclub_url: reading_position.bookclub_url,
         created_at: bookmark.created_at,
         updated_at: bookmark.updated_at
       }

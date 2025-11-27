@@ -36,7 +36,7 @@ export default class BookclubPublicationView extends Component {
   get startReadingUrl() {
     const first = this.firstChapter;
     if (first) {
-      return `/book/${this.args.publication.slug}/${first.number || 1}`;
+      return `/book/${this.args.publication.slug}/${first.slug}`;
     }
     return null;
   }
@@ -145,7 +145,7 @@ export default class BookclubPublicationView extends Component {
               >
                 {{#if item.has_access}}
                   <a
-                    href="/book/{{@publication.slug}}/{{item.number}}"
+                    href="/book/{{@publication.slug}}/{{item.slug}}"
                     class="bookclub-publication-view__toc-link"
                   >
                     <span class="bookclub-publication-view__toc-number">

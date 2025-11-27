@@ -54,6 +54,24 @@ export default class ReadingProgressSync {
    */
   @debounce(DEBOUNCE_MS)
   saveProgress(scrollPosition, scrollOffset) {
+    this._doSaveProgress(scrollPosition, scrollOffset);
+  }
+
+  /**
+   * Save reading progress immediately (bypasses debounce)
+   * Call this when exiting reading mode to ensure progress is saved
+   * @param {number} scrollPosition - Scroll position as percentage (0-100)
+   * @param {number} scrollOffset - Actual scroll pixel offset
+   */
+  saveProgressNow(scrollPosition, scrollOffset) {
+    this._doSaveProgress(scrollPosition, scrollOffset);
+  }
+
+  /**
+   * Internal save progress implementation
+   * @private
+   */
+  _doSaveProgress(scrollPosition, scrollOffset) {
     const progress = {
       publicationSlug: this.publicationSlug,
       contentId: this.contentId,

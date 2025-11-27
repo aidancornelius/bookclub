@@ -15,7 +15,10 @@ module Bookclub
       publication = find_publication_category(params[:slug])
       raise Discourse::NotFound unless publication
 
-      topic = find_content_topic(publication, params[:number])
+      chapter = find_chapter(publication, params[:chapter_id])
+      raise Discourse::NotFound unless chapter
+
+      topic = find_content_topic(chapter)
       raise Discourse::NotFound unless topic
 
       # Get feedback settings
@@ -65,10 +68,13 @@ module Bookclub
       publication = find_publication_category(params[:slug])
       raise Discourse::NotFound unless publication
 
-      topic = find_content_topic(publication, params[:number])
+      chapter = find_chapter(publication, params[:chapter_id])
+      raise Discourse::NotFound unless chapter
+
+      topic = find_content_topic(chapter)
       raise Discourse::NotFound unless topic
 
-      ensure_content_access!(topic)
+      ensure_chapter_access!(chapter)
 
       feedback_type = params[:feedback_type]
       feedback_settings = publication.custom_fields[PUBLICATION_FEEDBACK_SETTINGS] || {}
@@ -169,7 +175,7 @@ module Bookclub
       raise Discourse::NotFound unless post
 
       topic = post.topic
-      topic.category
+      publication = topic.category
 
       # Only allow delete by author or admins
       raise Discourse::InvalidAccess unless post.user_id == current_user.id || guardian.is_admin?

@@ -11,13 +11,13 @@ export default class BookclubContentRoute extends DiscourseRoute {
 
   /**
    * Load chapter data
-   * @param {Object} params - Route parameters
+   * @param {Object} params - Route parameters (chapter_id can be number or slug)
    * @returns {Promise<Object>} Chapter data
    */
   async model(params) {
     try {
       return await ajax(
-        `/bookclub/publications/${params.slug}/chapters/${params.content_number}.json`
+        `/bookclub/publications/${params.slug}/chapters/${params.chapter_id}.json`
       );
     } catch (error) {
       // eslint-disable-next-line no-console
@@ -30,7 +30,7 @@ export default class BookclubContentRoute extends DiscourseRoute {
         return {
           paywall: true,
           slug: params.slug,
-          content_number: params.content_number,
+          chapter_id: params.chapter_id,
           access_tiers: responseJSON.access_tiers,
         };
       }
@@ -51,7 +51,7 @@ export default class BookclubContentRoute extends DiscourseRoute {
         paywall: true,
         accessTiers: model.access_tiers,
         slug: model.slug,
-        contentNumber: model.content_number,
+        chapterId: model.chapter_id,
       });
       return;
     }

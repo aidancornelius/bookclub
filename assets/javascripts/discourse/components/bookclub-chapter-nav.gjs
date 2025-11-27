@@ -34,7 +34,7 @@ export default class BookclubChapterNav extends Component {
     <nav class="bookclub-chapter-nav">
       {{#if this.hasPrevious}}
         <a
-          href="/book/{{this.publicationSlug}}/{{this.previous.number}}"
+          href={{this.previous.url}}
           class="bookclub-chapter-nav__link bookclub-chapter-nav__link--prev"
         >
           <span class="bookclub-chapter-nav__label">Previous</span>
@@ -53,7 +53,7 @@ export default class BookclubChapterNav extends Component {
 
       {{#if this.hasNext}}
         <a
-          href="/book/{{this.publicationSlug}}/{{this.next.number}}"
+          href={{this.next.url}}
           class="bookclub-chapter-nav__link bookclub-chapter-nav__link--next"
         >
           <span class="bookclub-chapter-nav__label">Next</span>

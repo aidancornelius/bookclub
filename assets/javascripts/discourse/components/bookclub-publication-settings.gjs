@@ -113,7 +113,8 @@ export default class BookclubPublicationSettings extends Component {
           this.args.onUpdate(result.publication);
         }
       }
-    } catch {
+    } catch (error) {
+      console.error("Failed to save settings:", error);
       this.error = "Failed to save settings";
     } finally {
       this.saving = false;

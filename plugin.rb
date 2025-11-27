@@ -103,6 +103,12 @@ require_relative 'lib/bookclub/book_importer'
 
 after_initialize do
   # -----------------------------------------------------------------
+  # Register custom bookmarkable for reading position bookmarks
+  # -----------------------------------------------------------------
+  require_relative 'lib/bookclub/chapter_bookmarkable'
+  register_bookmarkable(Bookclub::ChapterBookmarkable)
+
+  # -----------------------------------------------------------------
   # Category custom fields (Publications)
   # -----------------------------------------------------------------
   register_category_custom_field_type(Bookclub::PUBLICATION_ENABLED, :boolean)
@@ -272,19 +278,19 @@ after_initialize do
   # Event hooks
   # -----------------------------------------------------------------
 
-  # Calculate word count when content topic's first post is saved
+  # Helper method to update word count for content topics
   # Word count is stored on both the topic and the chapter (subcategory)
-  on(:post_created) do |post|
-    next unless post.is_first_post?
+  define_method :update_content_word_count do |post|
+    return unless post.is_first_post?
 
     # Reload topic to ensure custom fields are fresh
     topic = Topic.find_by(id: post.topic_id)
-    next unless topic
+    return unless topic
 
     chapter = topic.category
 
     # Check if this is the content topic within a chapter subcategory
-    next unless topic.custom_fields[Bookclub::CONTENT_TOPIC]
+    return unless topic.custom_fields[Bookclub::CONTENT_TOPIC]
 
     word_count = post.raw.split.size
 
@@ -299,29 +305,9 @@ after_initialize do
     end
   end
 
-  on(:post_edited) do |post|
-    next unless post.is_first_post?
-
-    # Reload topic to ensure custom fields are fresh
-    topic = Topic.find_by(id: post.topic_id)
-    next unless topic
-
-    chapter = topic.category
-
-    next unless topic.custom_fields[Bookclub::CONTENT_TOPIC]
-
-    word_count = post.raw.split.size
-
-    # Store on topic
-    topic.custom_fields[Bookclub::CONTENT_WORD_COUNT] = word_count
-    topic.save_custom_fields
-
-    # Also store on chapter if it exists
-    if chapter&.custom_fields&.[](Bookclub::CHAPTER_ENABLED)
-      chapter.custom_fields[Bookclub::CHAPTER_WORD_COUNT] = word_count
-      chapter.save_custom_fields
-    end
-  end
+  # Calculate word count when content topic's first post is created or edited
+  on(:post_created) { |post| update_content_word_count(post) }
+  on(:post_edited) { |post| update_content_word_count(post) }
 
   # -----------------------------------------------------------------
   # Routes
@@ -330,9 +316,10 @@ after_initialize do
 
   # Public book routes (cleaner URLs)
   # Discussions are native Discourse topics within the chapter subcategory
+  # Supports both numeric (/book/slug/2) and slug-based (/book/slug/chapter-title) URLs
   Discourse::Application.routes.prepend do
     get '/book/:slug' => 'bookclub/publications#show', :as => :bookclub_publication
-    get '/book/:slug/:content_number' => 'bookclub/content#show', :as => :bookclub_content
+    get '/book/:slug/:chapter_id' => 'bookclub/content#show', :as => :bookclub_content
     get '/pages/:slug' => 'bookclub/pages#show', :as => :bookclub_page
   end
 

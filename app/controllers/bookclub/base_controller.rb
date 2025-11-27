@@ -4,6 +4,8 @@ module Bookclub
   class BaseController < ::ApplicationController
     requires_plugin PLUGIN_NAME
 
+    include Bookclub::ContentHelpers
+
     before_action :ensure_bookclub_enabled
 
     private
@@ -55,8 +57,24 @@ module Bookclub
       end
     end
 
-    def find_chapter(publication, chapter_number)
+    def find_chapter(publication, chapter_id)
       # Chapters are subcategories of the publication with CHAPTER_ENABLED
+      # chapter_id can be either a number or a slug
+      is_numeric = chapter_id.to_s.match?(/\A\d+\z/)
+
+      categories_with_custom_fields.find do |cat|
+        next unless cat.parent_category_id == publication.id && cat.custom_fields[CHAPTER_ENABLED]
+
+        if is_numeric
+          cat.custom_fields[CHAPTER_NUMBER]&.to_i == chapter_id.to_i
+        else
+          cat.slug == chapter_id.to_s
+        end
+      end
+    end
+
+    def find_chapter_by_number(publication, chapter_number)
+      # Find chapter by number only (for backwards compatibility)
       categories_with_custom_fields.find do |cat|
         cat.parent_category_id == publication.id && cat.custom_fields[CHAPTER_ENABLED] &&
           cat.custom_fields[CHAPTER_NUMBER]&.to_i == chapter_number.to_i
@@ -72,17 +90,7 @@ module Bookclub
         .sort_by { |cat| cat.custom_fields[CHAPTER_NUMBER]&.to_i || 9999 }
     end
 
-    def find_content_topic(chapter)
-      # The content topic is the one marked with CONTENT_TOPIC within the chapter
-      # Note: Discourse stores boolean true as "t" in custom fields
-      Topic
-        .where(category_id: chapter.id)
-        .joins(
-          "LEFT JOIN topic_custom_fields tcf ON tcf.topic_id = topics.id AND tcf.name = '#{CONTENT_TOPIC}'"
-        )
-        .where('tcf.value IN (?)', %w[t true])
-        .first
-    end
+    # find_content_topic method is provided by Bookclub::ContentHelpers
 
     def find_discussion_topics(chapter)
       # Discussion topics are all topics in the chapter that aren't the content topic
@@ -90,7 +98,10 @@ module Bookclub
       Topic
         .where(category_id: chapter.id, visible: true)
         .joins(
-          "LEFT JOIN topic_custom_fields tcf ON tcf.topic_id = topics.id AND tcf.name = '#{CONTENT_TOPIC}'"
+          sanitize_sql_array([
+            'LEFT JOIN topic_custom_fields tcf ON tcf.topic_id = topics.id AND tcf.name = ?',
+            CONTENT_TOPIC,
+          ]),
         )
         .where('tcf.value IS NULL OR tcf.value NOT IN (?)', %w[t true])
         .order(created_at: :desc)
@@ -125,6 +136,12 @@ module Bookclub
           custom_message: 'bookclub.errors.not_author_or_editor'
         )
       end
+    end
+
+    # Helper to check if a custom field value represents a boolean true
+    # Discourse stores boolean true in custom fields as "t", "true", or true
+    def boolean_custom_field?(value)
+      [true, "true", "t"].include?(value)
     end
   end
 end

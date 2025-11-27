@@ -16,8 +16,9 @@ module Bookclub
             guardian.is_publication_author?(publication) ||
               guardian.is_publication_editor?(publication) || guardian.is_admin?
 
-          chapter_number = params[:content_number] || params[:number]
-          chapter = find_chapter(publication, chapter_number)
+          # Support both /book/slug/2 (numeric) and /book/slug/chapter-slug (slug) formats
+          chapter_id = params[:chapter_id] || params[:content_number] || params[:number]
+          chapter = find_chapter(publication, chapter_id)
           raise Discourse::NotFound unless chapter
 
           # Check if chapter is published (for non-authors/editors)
@@ -168,14 +169,14 @@ module Bookclub
 
     def navigation_item(publication, chapter)
       pub_slug = publication.custom_fields[PUBLICATION_SLUG]
-      chapter_number = chapter.custom_fields[CHAPTER_NUMBER]
 
       {
         id: chapter.id,
         title: chapter.name,
-        number: chapter_number&.to_i,
+        slug: chapter.slug,
+        number: chapter.custom_fields[CHAPTER_NUMBER]&.to_i,
         type: chapter.custom_fields[CHAPTER_TYPE] || "chapter",
-        url: "/book/#{pub_slug}/#{chapter_number}",
+        url: "/book/#{pub_slug}/#{chapter.slug}",
         has_access: guardian.can_access_chapter?(chapter),
       }
     end
@@ -192,6 +193,7 @@ module Bookclub
         {
           id: chapter.id,
           title: chapter.name,
+          slug: chapter.slug,
           number: chapter.custom_fields[CHAPTER_NUMBER]&.to_i,
           type: chapter.custom_fields[CHAPTER_TYPE] || "chapter",
           has_access: is_free || has_chapter_access,
