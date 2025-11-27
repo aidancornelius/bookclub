@@ -1,0 +1,21 @@
+name: Sync theme branch
+
+on:
+  push:
+    branches: [main]
+    paths: ['theme/**']
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Split and push theme branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git subtree split --prefix=theme -b theme
+          git push origin theme --force
