@@ -236,7 +236,8 @@ export default class BookclubHomepage extends Component {
       this.topicsByCategory = Object.values(grouped).sort((a, b) =>
         a.category.name.localeCompare(b.category.name)
       );
-    } catch {
+    } catch (error) {
+      console.error("Failed to load topics grouped by category:", error);
       // Failed to load topics
     } finally {
       this.topicsLoading = false;

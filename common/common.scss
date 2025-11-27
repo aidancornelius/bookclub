@@ -1600,6 +1600,95 @@ body.bookclub-reading-view {
 }
 
 // ==========================================================================
+// USER PROFILE SECONDARY NAVIGATION
+// Style billing/subscriptions nav as horizontal tabs (like Invites page)
+// ==========================================================================
+.user-secondary-navigation {
+  background: transparent;
+
+  // Override nav-stacked to make horizontal tabs (like main nav)
+  // Classes are: action-list nav-stacked ember-view activity-nav
+  .activity-nav,
+  .activity-nav.nav-stacked,
+  .nav-stacked.activity-nav {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    gap: 0;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    border-bottom: 1px solid var(--primary-low) !important;
+    background: transparent;
+
+    // Override any stacked styles
+    &.nav-stacked {
+      flex-direction: row !important;
+    }
+
+    li {
+      display: block !important;
+      float: none !important;
+      flex: 1 1 0 !important;
+      width: auto !important;
+      margin: 0;
+      padding: 0;
+      background: transparent;
+      border: none !important;
+
+      a {
+        display: block;
+        padding: 0.75em 0.65em;
+        font-size: var(--font-down-1);
+        color: var(--primary-medium);
+        text-decoration: none;
+        text-align: center;
+        border: none !important;
+        border-bottom: 2px solid transparent !important;
+        margin-bottom: -1px;
+        background: transparent !important;
+        transition: color 0.15s ease;
+
+        &:hover {
+          color: var(--primary);
+          background: transparent !important;
+        }
+
+        &.active {
+          color: var(--primary);
+          font-weight: normal;
+          background: transparent !important;
+          border-bottom: 2px solid var(--tertiary) !important;
+        }
+      }
+    }
+  }
+}
+
+// User profile main navigation (activity, summary, etc.)
+.user-main-nav,
+.user-nav {
+  .nav-stacked {
+    li a {
+      border-radius: 0;
+      border-left: 2px solid transparent;
+      margin: var(--bookclub-space-1) 0;
+
+      &:hover {
+        background: var(--bookclub-accent-soft);
+        border-left-color: var(--bookclub-border-medium);
+      }
+
+      &.active {
+        background: transparent;
+        border-left-color: var(--bookclub-link-color);
+        font-weight: 500;
+      }
+    }
+  }
+}
+
+// ==========================================================================
 // HEADER NAV DROPDOWNS
 // ==========================================================================
 .bookclub-header-nav {
