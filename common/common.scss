@@ -137,13 +137,36 @@ a {
 // SIDEBAR - Refined, book-like navigation
 // ==========================================================================
 .sidebar-wrapper {
-  background: var(--bookclub-page-muted);
+  --d-sidebar-background: var(--bookclub-page-muted);
+  --d-sidebar-footer-fade: var(--bookclub-page-muted);
+
+  background: var(--d-sidebar-background);
   border-right: 1px solid var(--bookclub-border-subtle);
   transition:
     background 0.25s ease-in-out,
     border 0.25s ease-in-out;
   padding-top: 0;
 }
+
+:root {
+  --d-sidebar-background: var(--bookclub-page-muted);
+  --d-sidebar-footer-fade: var(--bookclub-page-muted);
+}
+
+// Fade footer to page background rather than sidebar color
+.sidebar-footer-wrapper .sidebar-footer-container::before {
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    var(--bookclub-page-bg)
+  );
+}
+
+.sidebar-footer-wrapper {
+  background: var(--bookclub-page-bg);
+  border-top: 1px solid var(--bookclub-border-subtle);
+}
+
 
 // Remove extra top spacing from sidebar sections
 .sidebar-sections {
@@ -1576,3 +1599,156 @@ body.bookclub-reading-view {
   display: none;
 }
 
+// ==========================================================================
+// HEADER NAV DROPDOWNS
+// ==========================================================================
+.bookclub-header-nav {
+  .nav-dropdown {
+    position: relative;
+
+    &__trigger {
+      display: flex;
+      align-items: center;
+      gap: var(--bookclub-space-2);
+      padding: var(--bookclub-space-2) var(--bookclub-space-4);
+      font-family: var(--bookclub-font-sans);
+      font-size: var(--bookclub-font-size-sm);
+      font-weight: 500;
+      color: var(--bookclub-text-muted);
+      background: transparent;
+      border: none;
+      border-bottom: 2px solid transparent;
+      cursor: pointer;
+      transition: all var(--bookclub-transition-fast);
+
+      &:hover {
+        color: var(--bookclub-text-color);
+        border-bottom-color: var(--bookclub-border-medium);
+      }
+
+      .d-icon {
+        font-size: 1em;
+        opacity: 0.7;
+      }
+    }
+
+    &__chevron {
+      font-size: 0.75em !important;
+      transition: transform var(--bookclub-transition-fast);
+    }
+
+    &__menu {
+      position: absolute;
+      top: 100%;
+      left: 0;
+      min-width: 200px;
+      padding: var(--bookclub-space-2) 0;
+      background: var(--bookclub-page-elevated);
+      border: 1px solid var(--bookclub-border-medium);
+      border-radius: var(--bookclub-radius-lg);
+      box-shadow: var(--bookclub-shadow-strong);
+      opacity: 0;
+      visibility: hidden;
+      transform: translateY(-8px);
+      transition: all var(--bookclub-transition-fast);
+      z-index: 1000;
+    }
+
+    &__item {
+      display: flex;
+      align-items: center;
+      gap: var(--bookclub-space-2);
+      padding: var(--bookclub-space-2) var(--bookclub-space-4);
+      font-size: var(--bookclub-font-size-sm);
+      color: var(--bookclub-text-color);
+      text-decoration: none;
+      transition: background var(--bookclub-transition-fast);
+
+      &:hover {
+        background: var(--bookclub-accent-soft);
+        color: var(--bookclub-link-color);
+      }
+
+      &.active {
+        color: var(--bookclub-link-color);
+        font-weight: 500;
+      }
+
+      .d-icon {
+        font-size: 0.9em;
+        opacity: 0.7;
+      }
+    }
+
+    &__separator {
+      margin: var(--bookclub-space-2) 0;
+      border: none;
+      border-top: 1px solid var(--bookclub-border-subtle);
+    }
+
+    // Active state (page in dropdown is current)
+    &.active {
+      .nav-dropdown__trigger {
+        color: var(--bookclub-text-color);
+        border-bottom-color: var(--bookclub-link-color);
+      }
+    }
+
+    // Open state (dropdown menu visible)
+    &.open {
+      .nav-dropdown__trigger {
+        color: var(--bookclub-text-color);
+      }
+
+      .nav-dropdown__chevron {
+        transform: rotate(180deg);
+      }
+
+      .nav-dropdown__menu {
+        opacity: 1;
+        visibility: visible;
+        transform: translateY(0);
+      }
+    }
+
+    // Show on hover as well
+    &:hover {
+      .nav-dropdown__menu {
+        opacity: 1;
+        visibility: visible;
+        transform: translateY(0);
+      }
+
+      .nav-dropdown__chevron {
+        transform: rotate(180deg);
+      }
+    }
+  }
+
+  @media (width <= 900px) {
+    .nav-dropdown {
+      &__trigger {
+        padding: var(--bookclub-space-2) var(--bookclub-space-3);
+
+        .nav-text {
+          display: none;
+        }
+
+        .nav-dropdown__chevron {
+          display: none;
+        }
+      }
+
+      &__menu {
+        left: auto;
+        right: 0;
+      }
+    }
+  }
+
+  @media (width <= 600px) {
+    .nav-dropdown {
+      display: none;
+    }
+  }
+}
