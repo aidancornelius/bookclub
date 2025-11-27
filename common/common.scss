@@ -1560,3 +1560,19 @@ body.bookclub-publication-view {
     transition: width 100ms ease-out;
   }
 }
+
+// ==========================================================================
+// BOOK PAGES - Hide unnecessary Discourse UI on reading pages
+// ==========================================================================
+body.bookclub-reading-view {
+  .powered-by-discourse {
+    display: none;
+  }
+}
+
+// Hide empty user/group card borders when not active
+#user-card:not(.show),
+#group-card:not(.show) {
+  display: none;
+}
+
