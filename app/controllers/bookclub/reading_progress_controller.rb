@@ -13,6 +13,7 @@ module Bookclub
         .map do |pub_slug, pub_progress|
           publication = find_publication_category(pub_slug)
           next nil unless publication
+          next nil unless guardian.can_access_publication?(publication)
 
           {
             publication: {
@@ -33,6 +34,7 @@ module Bookclub
     def show
       publication = find_publication_category(params[:publication_slug])
       raise Discourse::NotFound unless publication
+      raise Discourse::InvalidAccess unless guardian.can_access_publication?(publication)
 
       progress = current_user.custom_fields[READING_PROGRESS] || {}
       pub_progress = progress[params[:publication_slug]] || {}
@@ -55,6 +57,7 @@ module Bookclub
     def update
       publication = find_publication_category(params[:publication_slug])
       raise Discourse::NotFound unless publication
+      ensure_publication_access!(publication)
 
       progress = current_user.custom_fields[READING_PROGRESS] || {}
       pub_slug = params[:publication_slug]
@@ -74,6 +77,7 @@ module Bookclub
       # Track per-chapter progress
       if params[:content_id] && (params[:scroll_position] || params[:mark_completed])
         content_id = params[:content_id].to_i
+        validate_content_access!(publication, content_id)
         progress[pub_slug]['chapters'][content_id.to_s] ||= {}
 
         if params[:scroll_position]
@@ -97,12 +101,14 @@ module Bookclub
       # Legacy completed array
       if params[:mark_completed]
         content_id = params[:mark_completed].to_i
+        validate_content_access!(publication, content_id)
         progress[pub_slug]['completed'] ||= []
         progress[pub_slug]['completed'] << content_id if progress[pub_slug]['completed'].exclude?(content_id)
       end
 
       if params[:mark_uncompleted]
         content_id = params[:mark_uncompleted].to_i
+        validate_content_access!(publication, content_id)
         progress[pub_slug]['completed'] ||= []
         progress[pub_slug]['completed'].delete(content_id)
 
@@ -221,6 +227,14 @@ module Bookclub
         last_read_date: streak_data['last_read_date'],
         streak_start_date: streak_data['streak_start_date']
       }
+    end
+
+    def validate_content_access!(publication, content_id)
+      content_topic = Topic.find_by(id: content_id)
+      raise Discourse::NotFound unless content_topic
+      raise Discourse::InvalidAccess unless content_topic.category&.parent_category_id == publication.id
+      raise Discourse::InvalidAccess unless guardian.can_access_chapter?(content_topic.category)
+      raise Discourse::InvalidAccess unless content_topic.custom_fields[CONTENT_TOPIC]
     end
   end
 end

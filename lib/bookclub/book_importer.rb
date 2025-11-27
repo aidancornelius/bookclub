@@ -14,6 +14,7 @@ module Bookclub
         :publication,
         :chapters_created,
         :chapters_updated,
+        :chapters_skipped,
         :errors,
         keyword_init: true,
       )
@@ -38,6 +39,7 @@ module Bookclub
       errors = []
       chapters_created = []
       chapters_updated = []
+      chapters_skipped = []
 
       ActiveRecord::Base.transaction do
         # Create or find publication
@@ -62,8 +64,8 @@ module Bookclub
                 update_chapter(existing, chapter_data)
                 chapters_updated << chapter_data.title
               else
-                # Skip - chapter already exists
-                errors << "Skipped '#{chapter_data.title}' - already exists"
+                # Skip - chapter already exists (not an error, just a skip)
+                chapters_skipped << chapter_data.title
               end
             else
               create_chapter(publication, chapter_data)
@@ -88,10 +90,11 @@ module Bookclub
 
         return(
           ImportResult.new(
-            success: errors.empty? || chapters_created.any? || chapters_updated.any?,
+            success: errors.empty?,
             publication: publication,
             chapters_created: chapters_created,
             chapters_updated: chapters_updated,
+            chapters_skipped: chapters_skipped,
             errors: errors,
           )
         )
@@ -105,6 +108,7 @@ module Bookclub
         publication: nil,
         chapters_created: [],
         chapters_updated: [],
+        chapters_skipped: [],
         errors: [error_message],
       )
     rescue StandardError => e
@@ -117,6 +121,7 @@ module Bookclub
         publication: nil,
         chapters_created: [],
         chapters_updated: [],
+        chapters_skipped: [],
         errors: [error_message],
       )
     end
@@ -264,15 +269,64 @@ module Bookclub
     end
 
     def upload_cover(publication, image_data)
-      # TODO: Implement cover image upload functionality
-      # This would require:
-      # 1. Decoding the image_data (likely base64 or file path)
-      # 2. Creating a Discourse Upload object via UploadCreator
-      # 3. Setting publication.custom_fields[PUBLICATION_COVER_URL] to upload.url
-      # 4. Handling validation and error cases
-      Rails.logger.warn(
-        "[Bookclub::BookImporter] Cover image upload not yet implemented for publication #{publication.id}"
+      require "upload_creator"
+      require "base64"
+
+      io, filename = build_cover_io(image_data)
+      unless io && filename
+        Rails.logger.warn("[Bookclub::BookImporter] Could not process cover image data")
+        return
+      end
+
+      upload =
+        UploadCreator.new(io, filename, origin: "bookclub_cover").create_for(user.id)
+
+      if upload&.persisted?
+        publication.custom_fields[PUBLICATION_COVER_URL] = upload.url
+        publication.save_custom_fields
+      else
+        Rails.logger.warn(
+          "[Bookclub::BookImporter] Cover upload failed for publication #{publication.id}"
+        )
+      end
+    rescue StandardError => e
+      Rails.logger.error(
+        "[Bookclub::BookImporter] Cover upload error for publication #{publication.id}: #{e.class.name} - #{e.message}"
       )
+    ensure
+      io&.close if io.respond_to?(:close) && !io.is_a?(StringIO)
+    end
+
+    def build_cover_io(image_data)
+      case image_data
+      when Hash
+        filename = image_data[:filename] || image_data["filename"] || "cover.jpg"
+        if (path = image_data[:path] || image_data["path"]) && File.exist?(path)
+          [File.open(path, "rb"), File.basename(path)]
+        elsif (raw = image_data[:data] || image_data["data"])
+          decoded = safe_base64_decode(raw)
+          [StringIO.new(decoded), filename]
+        else
+          [nil, nil]
+        end
+      when String
+        if File.exist?(image_data)
+          [File.open(image_data, "rb"), File.basename(image_data)]
+        else
+          decoded = safe_base64_decode(image_data)
+          [StringIO.new(decoded), "cover.jpg"]
+        end
+      when Tempfile, File
+        [image_data, File.basename(image_data.path)]
+      else
+        [nil, nil]
+      end
+    end
+
+    def safe_base64_decode(data)
+      Base64.decode64(data)
+    rescue ArgumentError
+      data
     end
 
     def generate_slug(title)

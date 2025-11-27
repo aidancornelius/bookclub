@@ -132,8 +132,6 @@ en:
         issues: "Issues"
         content_label: "Content"
         content_placeholder: "Page content (Markdown supported)"
-        content_label: "Content"
-        content_placeholder: "Page content (Markdown supported)"
         create_chapter: "Create chapter"
         edit_chapter: "Edit chapter"
         delete_chapter: "Delete chapter"

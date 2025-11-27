@@ -257,8 +257,21 @@ module Bookclub
           "[Bookclub] Subscription integration failed for user #{user.id}: #{result.inspect_steps}"
         )
       end
+    rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotFound => e
+      Rails.logger.error(
+        "[Bookclub] Database error in subscription integration for user #{user.id}: #{e.message}"
+      )
+      Rails.logger.error(e.backtrace.join("\n"))
+    rescue ArgumentError, NoMethodError => e
+      Rails.logger.error(
+        "[Bookclub] Invalid data in subscription integration for user #{user.id}: #{e.message}"
+      )
+      Rails.logger.error(e.backtrace.join("\n"))
     rescue StandardError => e
-      Rails.logger.error("[Bookclub] Error in subscription integration: #{e.message}")
+      # Catch any unexpected errors but log them with full details
+      Rails.logger.error(
+        "[Bookclub] Unexpected error in subscription integration for user #{user.id}: #{e.class.name} - #{e.message}"
+      )
       Rails.logger.error(e.backtrace.join("\n"))
     end
 

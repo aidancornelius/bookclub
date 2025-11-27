@@ -2,7 +2,7 @@
 
 # name: bookclub
 # about: A publishing platform built on Discourse for books, journals, and public scholarship
-# meta_topic_id: TODO
+# meta_topic_id: TODO - Set this to a meta.discourse.org topic ID for plugin support/discussion
 # version: 0.1.0
 # authors: Bookclub Contributors
 # url: https://github.com/discourse/discourse/tree/main/plugins/bookclub
@@ -45,6 +45,9 @@ module ::Bookclub
 
   # Peer review statuses
   REVIEW_STATUSES = %w[draft under_review accepted published].freeze
+
+  # Tier hierarchy for access control (lowest to highest)
+  TIER_HIERARCHY = %w[community reader member supporter patron].freeze
 
   # Custom field names - Publications (categories)
   PUBLICATION_ENABLED = 'publication_enabled'
@@ -279,9 +282,9 @@ after_initialize do
   # Event hooks
   # -----------------------------------------------------------------
 
-  # Helper method to update word count for content topics
+  # Helper lambda to update word count for content topics
   # Word count is stored on both the topic and the chapter (subcategory)
-  define_method :update_content_word_count do |post|
+  update_content_word_count = ->(post) do
     return unless post.is_first_post?
 
     # Reload topic to ensure custom fields are fresh
@@ -307,8 +310,8 @@ after_initialize do
   end
 
   # Calculate word count when content topic's first post is created or edited
-  on(:post_created) { |post| update_content_word_count(post) }
-  on(:post_edited) { |post| update_content_word_count(post) }
+  on(:post_created) { |post| update_content_word_count.call(post) }
+  on(:post_edited) { |post| update_content_word_count.call(post) }
 
   # -----------------------------------------------------------------
   # Routes
@@ -384,9 +387,8 @@ after_initialize do
     # "everyone" tier gives baseline access at that level
     everyone_tier = access_tiers['everyone']
     if everyone_tier
-      tier_hierarchy = %w[community reader member supporter patron]
-      everyone_tier_index = tier_hierarchy.index(everyone_tier) || 0
-      required_tier_index = tier_hierarchy.index(chapter_access_level) || 0
+      everyone_tier_index = Bookclub::TIER_HIERARCHY.index(everyone_tier) || 0
+      required_tier_index = Bookclub::TIER_HIERARCHY.index(chapter_access_level) || 0
       return true if everyone_tier_index >= required_tier_index
     end
 
@@ -405,11 +407,10 @@ after_initialize do
 
     return false if user_tiers.empty?
 
-    # Define tier hierarchy
-    tier_hierarchy = %w[community reader member supporter patron]
-    user_max_tier = user_tiers.max_by { |t| tier_hierarchy.index(t) || 0 }
-    required_tier_index = tier_hierarchy.index(chapter_access_level) || 0
-    user_tier_index = tier_hierarchy.index(user_max_tier) || 0
+    # Use tier hierarchy to determine access
+    user_max_tier = user_tiers.max_by { |t| Bookclub::TIER_HIERARCHY.index(t) || 0 }
+    required_tier_index = Bookclub::TIER_HIERARCHY.index(chapter_access_level) || 0
+    user_tier_index = Bookclub::TIER_HIERARCHY.index(user_max_tier) || 0
 
     user_tier_index >= required_tier_index
   end
@@ -430,6 +431,13 @@ after_initialize do
     return false if editor_ids.blank?
 
     editor_ids.include?(@user.id)
+  end
+
+  # Check if user can manage publication (author, editor, or admin)
+  add_to_class(:guardian, :can_manage_publication?) do |publication|
+    is_publication_author?(publication) ||
+      is_publication_editor?(publication) ||
+      is_admin?
   end
 
   # -----------------------------------------------------------------

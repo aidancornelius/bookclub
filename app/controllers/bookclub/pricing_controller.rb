@@ -51,8 +51,8 @@ module Bookclub
       current_tier = current_user_tier(publication)
 
       # Get subscription details from user's custom fields
-      subscriptions = current_user.custom_fields[SUBSCRIPTION_METADATA] || {}
-      pub_slug = publication.custom_fields[PUBLICATION_SLUG]
+      subscriptions = current_user.custom_fields[Bookclub::SUBSCRIPTION_METADATA] || {}
+      pub_slug = publication.custom_fields[Bookclub::PUBLICATION_SLUG] || publication.slug
       subscription_data = subscriptions[pub_slug]
 
       render json: {
@@ -74,6 +74,12 @@ module Bookclub
 
       price_id = params[:price_id]
       return render json: { error: 'price_id_required' }, status: :bad_request if price_id.blank?
+
+      # Security: Validate that price_id belongs to this publication's Stripe product
+      unless price_belongs_to_publication?(price_id, publication)
+        Rails.logger.warn("[Bookclub] Attempted checkout with invalid price_id #{price_id} for publication #{publication.id}")
+        return render json: { error: 'invalid_price', message: 'Price does not belong to this publication' }, status: :bad_request
+      end
 
       success_url =
         params[:success_url] || "#{Discourse.base_url}/book/#{params[:slug]}?checkout=success"
@@ -164,7 +170,12 @@ module Bookclub
     def fetch_stripe_prices(product_id, publication)
       set_stripe_api_key
 
-      prices = ::Stripe::Price.list({ product: product_id, active: true, expand: ['data.product'] })
+      begin
+        prices = ::Stripe::Price.list({ product: product_id, active: true, expand: ['data.product'] })
+      rescue ::Stripe::StripeError => e
+        Rails.logger.error("[Bookclub] Error fetching Stripe prices for product #{product_id}: #{e.message}")
+        return []
+      end
 
       access_tiers = publication.custom_fields[PUBLICATION_ACCESS_TIERS] || {}
 
@@ -198,8 +209,7 @@ module Bookclub
     end
 
     def tier_hierarchy_index(tier)
-      hierarchy = %w[community reader member supporter patron]
-      hierarchy.index(tier) || 99
+      TIER_HIERARCHY.index(tier) || 99
     end
 
     def current_user_tier(publication)
@@ -218,6 +228,23 @@ module Bookclub
 
       # Return highest tier
       user_tiers.max_by { |_name, level| tier_hierarchy_index(level) }&.last
+    end
+
+    # Validates that a price_id belongs to this publication's configured Stripe product
+    # Prevents users from purchasing unrelated prices via crafted requests
+    def price_belongs_to_publication?(price_id, publication)
+      stripe_product_id = publication.custom_fields['bookclub_stripe_product_id']
+      return false if stripe_product_id.blank?
+
+      set_stripe_api_key
+
+      begin
+        price = ::Stripe::Price.retrieve(price_id)
+        price.product == stripe_product_id
+      rescue ::Stripe::StripeError => e
+        Rails.logger.error("[Bookclub] Error validating price #{price_id}: #{e.message}")
+        false
+      end
     end
 
     def create_stripe_checkout_session(price_id:, publication:, success_url:, cancel_url:)

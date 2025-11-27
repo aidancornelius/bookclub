@@ -31,7 +31,8 @@ export default class BookclubHeaderNav extends Component {
       const result = await ajax("/bookclub/pages/nav.json");
       this.navPages = result.header || [];
       this.navLoaded = true;
-    } catch {
+    } catch (error) {
+      console.error("Failed to load navigation pages:", error);
       this.navPages = [];
       this.navLoaded = true;
     }

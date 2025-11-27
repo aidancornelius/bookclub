@@ -32,10 +32,18 @@ module Bookclub
 
       raise Discourse::NotFound unless topic
 
-      # Remove any existing reading position bookmarks for this user
-      remove_existing_reading_bookmarks
+      # Security: Verify this is a Bookclub content topic
+      is_content_topic = topic.custom_fields[Bookclub::CONTENT_TOPIC]
+      raise Discourse::NotFound unless is_content_topic.present? && %w[t true].include?(is_content_topic.to_s)
 
-      # Find or create reading position record
+      # Security: Verify user can see this topic
+      raise Discourse::InvalidAccess unless guardian.can_see_topic?(topic)
+
+      # Security: Verify user has chapter access
+      chapter = topic.category
+      raise Discourse::InvalidAccess unless chapter && guardian.can_access_chapter?(chapter)
+
+      # Find or create reading position record first (validates before deleting old bookmarks)
       reading_position = BookclubReadingPosition.find_or_create_by!(
         user_id: current_user.id,
         topic_id: topic.id
@@ -50,6 +58,9 @@ module Bookclub
       )
 
       if bookmark.persisted?
+        # Only remove old bookmarks AFTER new one succeeds
+        remove_existing_reading_bookmarks(except_id: bookmark.id)
+
         render json: {
           success: true,
           bookmark: serialize_bookmark(bookmark, reading_position)
@@ -81,10 +92,11 @@ module Bookclub
         .first
     end
 
-    def remove_existing_reading_bookmarks
-      # Remove all reading position bookmarks for this user
+    def remove_existing_reading_bookmarks(except_id: nil)
+      # Remove all reading position bookmarks for this user (except the one just created)
       bookmarks = current_user.bookmarks
         .where(bookmarkable_type: "BookclubReadingPosition", name: READING_POSITION_NAME)
+      bookmarks = bookmarks.where.not(id: except_id) if except_id
 
       count = bookmarks.count
 

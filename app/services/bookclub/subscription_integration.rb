@@ -33,13 +33,38 @@ module Bookclub
     def fetch_publication(params:)
       return nil unless params.product_id
 
+      # First try to find publication via Stripe product metadata
       product = fetch_stripe_product(params.product_id)
-      return nil unless product
 
-      publication_id = product[:metadata][:bookclub_publication_id]
-      return nil unless publication_id
+      if product
+        publication_id = product.dig(:metadata, :bookclub_publication_id)
+        if publication_id
+          publication = Category.find_by(id: publication_id)
+          return publication if publication
+        end
+      end
 
-      Category.find_by(id: publication_id)
+      # Fallback: Find publication by looking up which one has this product_id in its custom fields
+      # This handles the case where bookclub_stripe_product_id is set on the publication but
+      # bookclub_publication_id is not set in Stripe product metadata
+      publication_field = CategoryCustomField.find_by(
+        name: 'bookclub_stripe_product_id',
+        value: params.product_id
+      )
+
+      if publication_field
+        publication = Category.find_by(id: publication_field.category_id)
+        if publication&.custom_fields&.[](Bookclub::PUBLICATION_ENABLED)
+          return publication
+        end
+      end
+
+      Rails.logger.warn(
+        "[Bookclub] No publication found for product #{params.product_id}. " \
+        "Ensure either bookclub_publication_id is set in Stripe product metadata, " \
+        "or bookclub_stripe_product_id is set on the publication."
+      )
+      nil
     end
 
     def process_subscription_event(params:, publication:, context:)
@@ -120,8 +145,13 @@ module Bookclub
         publication_url: publication_url(publication),
         tier_name: group.name
       )
-    rescue StandardError => e
-      Rails.logger.error("[Bookclub] Error sending access granted notification: #{e.message}")
+    rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotFound => e
+      Rails.logger.error("[Bookclub] Database error sending access granted notification: #{e.message}")
+    rescue ArgumentError, NoMethodError => e
+      Rails.logger.error("[Bookclub] Invalid data in access granted notification: #{e.message}")
+    rescue => e
+      # Catch any unexpected errors but log them with full details
+      Rails.logger.error("[Bookclub] Unexpected error sending access granted notification: #{e.class.name} - #{e.message}")
     end
 
     def notify_user_access_revoked(user, publication, group)
@@ -131,25 +161,34 @@ module Bookclub
         publication_name: publication.name,
         tier_name: group.name
       )
-    rescue StandardError => e
-      Rails.logger.error("[Bookclub] Error sending access revoked notification: #{e.message}")
+    rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotFound => e
+      Rails.logger.error("[Bookclub] Database error sending access revoked notification: #{e.message}")
+    rescue ArgumentError, NoMethodError => e
+      Rails.logger.error("[Bookclub] Invalid data in access revoked notification: #{e.message}")
+    rescue => e
+      # Catch any unexpected errors but log them with full details
+      Rails.logger.error("[Bookclub] Unexpected error sending access revoked notification: #{e.class.name} - #{e.message}")
     end
 
     def store_subscription_metadata(user, publication, subscription_data)
-      metadata = user.custom_fields['bookclub_subscriptions'] || {}
-      metadata[publication.id.to_s] = {
+      metadata = user.custom_fields[Bookclub::SUBSCRIPTION_METADATA] || {}
+      # Use publication slug as the key for consistency with pricing_controller
+      pub_slug = publication.custom_fields[Bookclub::PUBLICATION_SLUG] || publication.slug
+      metadata[pub_slug] = {
         subscription_id: subscription_data[:id],
         status: subscription_data[:status],
         granted_at: Time.current.iso8601
       }
-      user.custom_fields['bookclub_subscriptions'] = metadata
+      user.custom_fields[Bookclub::SUBSCRIPTION_METADATA] = metadata
       user.save_custom_fields
     end
 
     def clear_subscription_metadata(user, publication)
-      metadata = user.custom_fields['bookclub_subscriptions'] || {}
-      metadata.delete(publication.id.to_s)
-      user.custom_fields['bookclub_subscriptions'] = metadata
+      metadata = user.custom_fields[Bookclub::SUBSCRIPTION_METADATA] || {}
+      # Use publication slug as the key for consistency with pricing_controller
+      pub_slug = publication.custom_fields[Bookclub::PUBLICATION_SLUG] || publication.slug
+      metadata.delete(pub_slug)
+      user.custom_fields[Bookclub::SUBSCRIPTION_METADATA] = metadata
       user.save_custom_fields
     end
 
@@ -165,13 +204,15 @@ module Bookclub
       return unless group
 
       # Update subscription metadata to reflect payment failure
-      metadata = user.custom_fields['bookclub_subscriptions'] || {}
-      pub_data = metadata[publication.id.to_s] || {}
+      # Use publication slug as the key for consistency with pricing_controller
+      metadata = user.custom_fields[Bookclub::SUBSCRIPTION_METADATA] || {}
+      pub_slug = publication.custom_fields[Bookclub::PUBLICATION_SLUG] || publication.slug
+      pub_data = metadata[pub_slug] || {}
       pub_data[:status] = 'past_due'
       pub_data[:payment_failed_at] = Time.current.iso8601
       pub_data[:attempt_count] = subscription_data[:attempt_count]
-      metadata[publication.id.to_s] = pub_data
-      user.custom_fields['bookclub_subscriptions'] = metadata
+      metadata[pub_slug] = pub_data
+      user.custom_fields[Bookclub::SUBSCRIPTION_METADATA] = metadata
       user.save_custom_fields
 
       # Notify user of payment failure
@@ -213,8 +254,13 @@ module Bookclub
         tier_name: group.name,
         amount_due: format_amount(subscription_data[:amount_due])
       )
-    rescue StandardError => e
-      Rails.logger.error("[Bookclub] Error sending payment failed notification: #{e.message}")
+    rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotFound => e
+      Rails.logger.error("[Bookclub] Database error sending payment failed notification: #{e.message}")
+    rescue ArgumentError, NoMethodError => e
+      Rails.logger.error("[Bookclub] Invalid data in payment failed notification: #{e.message}")
+    rescue => e
+      # Catch any unexpected errors but log them with full details
+      Rails.logger.error("[Bookclub] Unexpected error sending payment failed notification: #{e.class.name} - #{e.message}")
     end
 
     def notify_user_refund_processed(user, publication, group, subscription_data)
@@ -225,8 +271,13 @@ module Bookclub
         tier_name: group.name,
         amount_refunded: format_amount(subscription_data[:amount_refunded])
       )
-    rescue StandardError => e
-      Rails.logger.error("[Bookclub] Error sending refund notification: #{e.message}")
+    rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotFound => e
+      Rails.logger.error("[Bookclub] Database error sending refund notification: #{e.message}")
+    rescue ArgumentError, NoMethodError => e
+      Rails.logger.error("[Bookclub] Invalid data in refund notification: #{e.message}")
+    rescue => e
+      # Catch any unexpected errors but log them with full details
+      Rails.logger.error("[Bookclub] Unexpected error sending refund notification: #{e.class.name} - #{e.message}")
     end
 
     def format_amount(amount_cents)

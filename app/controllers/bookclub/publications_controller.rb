@@ -10,11 +10,7 @@ module Bookclub
           next false unless cat.custom_fields[PUBLICATION_ENABLED] && guardian.can_see?(cat)
 
           # Authors, editors, and admins can see all publications
-          is_author_or_editor =
-            guardian.is_publication_author?(cat) || guardian.is_publication_editor?(cat) ||
-              guardian.is_admin?
-
-          next true if is_author_or_editor
+          next true if guardian.can_manage_publication?(cat)
 
           # Regular users only see publications with published content
           has_published_content?(cat)
@@ -32,12 +28,8 @@ module Bookclub
           raise Discourse::InvalidAccess unless guardian.can_see?(publication)
 
           # Check if user can access this publication (authors/editors/admins can always access)
-          is_author_or_editor =
-            guardian.is_publication_author?(publication) ||
-              guardian.is_publication_editor?(publication) || guardian.is_admin?
-
           # Regular users can only access publications with published content
-          unless is_author_or_editor || has_published_content?(publication)
+          unless guardian.can_manage_publication?(publication) || has_published_content?(publication)
             raise Discourse::NotFound
           end
 
@@ -137,9 +129,7 @@ module Bookclub
     def build_table_of_contents(publication)
       chapters = find_chapters(publication)
       has_publication_access = guardian.can_access_publication?(publication)
-      is_author_or_editor =
-        guardian.is_publication_author?(publication) ||
-          guardian.is_publication_editor?(publication) || guardian.is_admin?
+      is_author_or_editor = guardian.can_manage_publication?(publication)
 
       # Filter out unpublished chapters for non-authors/editors
       visible_chapters =

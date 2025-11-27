@@ -8,11 +8,7 @@ module Bookclub
     def index
       publications =
         categories_with_custom_fields.select do |cat|
-          cat.custom_fields[PUBLICATION_ENABLED] &&
-            (
-              guardian.is_publication_author?(cat) || guardian.is_publication_editor?(cat) ||
-                guardian.is_admin?
-            )
+          cat.custom_fields[PUBLICATION_ENABLED] && guardian.can_manage_publication?(cat)
         end
 
       respond_to do |format|
@@ -28,11 +24,7 @@ module Bookclub
     def publications
       publications =
         categories_with_custom_fields.select do |cat|
-          cat.custom_fields[PUBLICATION_ENABLED] &&
-            (
-              guardian.is_publication_author?(cat) || guardian.is_publication_editor?(cat) ||
-                guardian.is_admin?
-            )
+          cat.custom_fields[PUBLICATION_ENABLED] && guardian.can_manage_publication?(cat)
         end
 
       render json: {
@@ -358,17 +350,23 @@ module Bookclub
       chapter = find_chapter(publication, params[:number])
       raise Discourse::NotFound unless chapter
 
-      # Delete all topics in the chapter first
-      Topic
-        .where(category_id: chapter.id)
-        .find_each do |topic|
-          PostDestroyer.new(current_user, topic.first_post).destroy if topic.first_post
-        end
+      chapter_id = chapter.id
+      chapter_name = chapter.name
 
-      # Now delete the category
-      chapter.destroy
+      # Enqueue background job for deletion to avoid timeouts on large chapters
+      # PostDestroyer side effects (uploads, logs) are handled properly in the background
+      Jobs.enqueue(
+        :delete_bookclub_chapter,
+        chapter_id: chapter_id,
+        user_id: current_user.id,
+        publication_id: publication.id
+      )
 
-      render json: { success: true }
+      Rails.logger.info(
+        "[Bookclub] Enqueued deletion of chapter #{chapter_id} '#{chapter_name}' from publication #{publication.id}"
+      )
+
+      render json: { success: true, message: "Chapter deletion queued" }
     end
 
     # Import a book from uploaded file (creates new publication)
@@ -484,72 +482,74 @@ module Bookclub
     end
 
     # Sync Discourse category permissions based on chapter access level and published status
+    # Wrapped in a transaction to ensure atomic updates - if any step fails, permissions remain unchanged
     def sync_chapter_permissions(chapter, access_level, publication, published: nil)
       # Determine published status
       is_published =
         if published.nil?
           pub_val = chapter.custom_fields[CHAPTER_PUBLISHED]
-          [true, "true", "t"].include?(pub_val)
+          boolean_custom_field?(pub_val)
         else
-          [true, "true", "t"].include?(published)
+          boolean_custom_field?(published)
         end
 
-      # Clear existing category group permissions
-      CategoryGroup.where(category_id: chapter.id).delete_all
+      ActiveRecord::Base.transaction do
+        # Clear existing category group permissions
+        CategoryGroup.where(category_id: chapter.id).delete_all
 
-      # Unpublished chapters: only staff can see
-      unless is_published
-        CategoryGroup.create!(
-          category_id: chapter.id,
-          group_id: Group::AUTO_GROUPS[:staff],
-          permission_type: CategoryGroup.permission_types[:full],
-        )
-        return
-      end
-
-      if access_level.blank? || access_level == "free"
-        # Free published content: everyone can see
-        CategoryGroup.create!(
-          category_id: chapter.id,
-          group_id: Group::AUTO_GROUPS[:everyone],
-          permission_type: CategoryGroup.permission_types[:full],
-        )
-      else
-        # Paid/tiered content: restrict to specific groups based on access tiers
-        access_tiers = publication.custom_fields[PUBLICATION_ACCESS_TIERS] || {}
-        tier_hierarchy = %w[community reader member supporter patron]
-        required_tier_index = tier_hierarchy.index(access_level) || 0
-
-        allowed_groups = []
-
-        access_tiers.each do |group_name, tier_level|
-          next if group_name == "everyone"
-
-          tier_index = tier_hierarchy.index(tier_level) || 0
-          next if tier_index < required_tier_index
-
-          group = Group.find_by(name: group_name)
-          allowed_groups << group.id if group
-        end
-
-        # Always allow staff full access
-        CategoryGroup.create!(
-          category_id: chapter.id,
-          group_id: Group::AUTO_GROUPS[:staff],
-          permission_type: CategoryGroup.permission_types[:full],
-        )
-
-        # Add allowed groups
-        allowed_groups.each do |group_id|
+        # Unpublished chapters: only staff can see
+        unless is_published
           CategoryGroup.create!(
             category_id: chapter.id,
-            group_id: group_id,
+            group_id: Group::AUTO_GROUPS[:staff],
             permission_type: CategoryGroup.permission_types[:full],
           )
+          return
         end
 
-        # If no groups have access, only staff can see it
-        # This effectively hides paid content from non-subscribers
+        if access_level.blank? || access_level == "free"
+          # Free published content: everyone can see
+          CategoryGroup.create!(
+            category_id: chapter.id,
+            group_id: Group::AUTO_GROUPS[:everyone],
+            permission_type: CategoryGroup.permission_types[:full],
+          )
+        else
+          # Paid/tiered content: restrict to specific groups based on access tiers
+          access_tiers = publication.custom_fields[PUBLICATION_ACCESS_TIERS] || {}
+          required_tier_index = Bookclub::TIER_HIERARCHY.index(access_level) || 0
+
+          allowed_groups = []
+
+          access_tiers.each do |group_name, tier_level|
+            next if group_name == "everyone"
+
+            tier_index = Bookclub::TIER_HIERARCHY.index(tier_level) || 0
+            next if tier_index < required_tier_index
+
+            group = Group.find_by(name: group_name)
+            allowed_groups << group.id if group
+          end
+
+          # Always allow staff full access
+          CategoryGroup.create!(
+            category_id: chapter.id,
+            group_id: Group::AUTO_GROUPS[:staff],
+            permission_type: CategoryGroup.permission_types[:full],
+          )
+
+          # Add allowed groups
+          allowed_groups.each do |group_id|
+            CategoryGroup.create!(
+              category_id: chapter.id,
+              group_id: group_id,
+              permission_type: CategoryGroup.permission_types[:full],
+            )
+          end
+
+          # If no groups have access, only staff can see it
+          # This effectively hides paid content from non-subscribers
+        end
       end
     end
 
@@ -660,36 +660,50 @@ module Bookclub
     def calculate_engagement(publication)
       chapters = find_chapters(publication)
       publication_author_ids = publication.custom_fields[PUBLICATION_AUTHOR_IDS] || []
+      chapter_ids = chapters.pluck(:id)
 
+      return empty_engagement_stats if chapter_ids.empty?
+
+      # Create hash for O(1) chapter lookups instead of linear search
+      chapters_by_id = chapters.index_by(&:id)
+
+      # Build discussion topics query (non-content topics in chapters)
       # NOTE: Discourse stores boolean true as "t" in custom fields
-      discussion_topics =
-        Topic
-          .where(category_id: chapters.pluck(:id))
-          .joins(
-            "LEFT JOIN topic_custom_fields tcf ON tcf.topic_id = topics.id AND tcf.name = '#{CONTENT_TOPIC}'",
-          )
-          .where("tcf.value IS NULL OR tcf.value NOT IN (?)", %w[t true])
+      discussion_topics_sql = Topic
+        .where(category_id: chapter_ids)
+        .joins(
+          "LEFT JOIN topic_custom_fields tcf ON tcf.topic_id = topics.id AND tcf.name = '#{CONTENT_TOPIC}'",
+        )
+        .where("tcf.value IS NULL OR tcf.value NOT IN (?)", %w[t true])
 
-      posts = Post.where(topic_id: discussion_topics.pluck(:id))
+      # Use SQL COUNT for aggregates instead of loading all records
+      total_discussions = discussion_topics_sql.count
+      discussion_topic_ids = discussion_topics_sql.limit(10000).pluck(:id) # Cap for safety
 
-      # Find questions that need author response
-      # A question is a topic without any replies from the publication authors
-      unanswered_questions =
-        discussion_topics
-          .where("topics.posts_count > 1") # Has at least one reply (but maybe not from author)
-          .select do |topic|
-            # Check if any author has replied
-            Post.where(topic_id: topic.id).where(user_id: publication_author_ids).none?
-          end
+      # Use SQL aggregates for post counts
+      total_posts = Post.where(topic_id: discussion_topic_ids).count
+      unique_participants = Post.where(topic_id: discussion_topic_ids).distinct.count(:user_id)
 
-      # Recent unanswered questions
+      # Find unanswered questions using SQL NOT EXISTS instead of N+1 queries
+      unanswered_query = discussion_topics_sql.where("topics.posts_count > 1")
+
+      if publication_author_ids.any?
+        # Use NOT EXISTS subquery to avoid N+1 queries
+        unanswered_query = unanswered_query.where(
+          "NOT EXISTS (SELECT 1 FROM posts p WHERE p.topic_id = topics.id AND p.user_id IN (?))",
+          publication_author_ids
+        )
+      end
+
+      unanswered_count = unanswered_query.count
+
+      # Recent unanswered questions (limited query, not loading all into memory)
       recent_unanswered =
-        unanswered_questions
-          .sort_by(&:created_at)
-          .reverse
-          .take(5)
+        unanswered_query
+          .order(created_at: :desc)
+          .limit(5)
           .map do |topic|
-            chapter = chapters.find { |ch| ch.id == topic.category_id }
+            chapter = chapters_by_id[topic.category_id]
             {
               id: topic.id,
               title: topic.title,
@@ -704,92 +718,144 @@ module Bookclub
             }
           end
 
+      # Recent activity - only load what we need
+      recent_posts = Post
+        .where(topic_id: discussion_topic_ids)
+        .order(created_at: :desc)
+        .limit(10)
+        .includes(:user, :topic)
+
       {
-        total_discussions: discussion_topics.count,
-        total_posts: posts.count,
-        unique_participants: posts.distinct.count(:user_id),
-        unanswered_questions_count: unanswered_questions.count,
+        total_discussions: total_discussions,
+        total_posts: total_posts,
+        unique_participants: unique_participants,
+        unanswered_questions_count: unanswered_count,
         unanswered_questions: recent_unanswered,
         recent_activity:
-          posts
-            .order(created_at: :desc)
-            .limit(10)
-            .includes(:user, :topic)
-            .map do |post|
-              # Skip posts with deleted users
-              next unless post.user
+          recent_posts.map do |post|
+            # Skip posts with deleted users
+            next unless post.user
 
-              chapter = chapters.find { |ch| ch.id == post.topic.category_id }
-              {
-                id: post.id,
-                topic_id: post.topic_id,
-                topic_title: post.topic.title,
-                chapter: {
-                  id: chapter&.id,
-                  title: chapter&.name,
-                  number: chapter&.custom_fields&.[](CHAPTER_NUMBER)&.to_i,
-                },
-                excerpt: post.excerpt(200),
-                user: {
-                  id: post.user.id,
-                  username: post.user.username,
-                  avatar_url: post.user.avatar_template_url.gsub("{size}", "45"),
-                },
-                created_at: post.created_at,
-              }
-            end
-            .compact,
+            chapter = chapters_by_id[post.topic.category_id]
+            {
+              id: post.id,
+              topic_id: post.topic_id,
+              topic_title: post.topic.title,
+              chapter: {
+                id: chapter&.id,
+                title: chapter&.name,
+                number: chapter&.custom_fields&.[](CHAPTER_NUMBER)&.to_i,
+              },
+              excerpt: post.excerpt(200),
+              user: {
+                id: post.user.id,
+                username: post.user.username,
+                avatar_url: post.user.avatar_template_url.gsub("{size}", "45"),
+              },
+              created_at: post.created_at,
+            }
+          end.compact,
       }
     end
+
+    def empty_engagement_stats
+      {
+        total_discussions: 0,
+        total_posts: 0,
+        unique_participants: 0,
+        unanswered_questions_count: 0,
+        unanswered_questions: [],
+        recent_activity: [],
+      }
+    end
+
+    # Maximum number of user records to process for analytics
+    # Beyond this, stats are estimated from the sample
+    MAX_ANALYTICS_USERS = 1000
 
     def calculate_reader_progress(publication)
       chapters = find_chapters(publication)
       publication_slug = publication.custom_fields[PUBLICATION_SLUG]
 
+      # Cache total chapters count outside loop
+      total_chapters = chapters.count
+      return {
+        total_readers: 0,
+        completed_readers: 0,
+        average_progress: 0,
+        by_chapter: [],
+        truncated: false,
+      } if total_chapters.zero?
+
+      # Pre-compute chapter IDs for faster Set lookups
+      chapter_ids = chapters.map(&:id)
+
       # Find all users who have reading progress for this publication
       # Use LIKE query as a fallback since JSONB ? operator may not work in all cases
-      user_progress_data =
+      user_progress_query =
         UserCustomField.where(name: READING_PROGRESS).where(
           "value LIKE ?",
           "%\"#{publication_slug}\"%",
         )
 
-      total_readers = user_progress_data.count
+      total_readers = user_progress_query.count
+      truncated = total_readers > MAX_ANALYTICS_USERS
+      sample_size = [total_readers, MAX_ANALYTICS_USERS].min
+
       completed_readers = 0
-      total_completion_percentage = 0
+      total_completion_percentage = 0.0
+      processed_count = 0
 
       # Build chapter-level progress data
       chapter_progress = {}
-      chapters.each { |chapter| chapter_progress[chapter.id] = { started: 0, completed: 0 } }
+      chapter_ids.each { |id| chapter_progress[id] = { started: 0, completed: 0 } }
 
-      user_progress_data.each do |user_field|
-        progress = JSON.parse(user_field.value)
+      # Use find_each for batched processing with a hard limit to prevent unbounded processing
+      user_progress_query.limit(MAX_ANALYTICS_USERS).find_each(batch_size: 100) do |user_field|
+        begin
+          progress = JSON.parse(user_field.value)
+        rescue JSON::ParserError
+          next
+        end
+
         pub_progress = progress[publication_slug]
         next unless pub_progress
 
-        completed_chapters = pub_progress["completed"] || []
-        total_chapters = chapters.count
+        processed_count += 1
 
-        if total_chapters.positive?
-          completion_percentage = (completed_chapters.length.to_f / total_chapters) * 100
-          total_completion_percentage += completion_percentage
+        # Use Set for O(1) membership tests instead of Array#include?
+        completed_chapters = Set.new(pub_progress["completed"] || [])
 
-          completed_readers += 1 if completion_percentage >= 100
-        end
+        completion_percentage = (completed_chapters.length.to_f / total_chapters) * 100
+        total_completion_percentage += completion_percentage
 
-        # Track per-chapter progress
-        chapters.each do |chapter|
-          if completed_chapters.include?(chapter.id)
-            chapter_progress[chapter.id][:completed] += 1
-            chapter_progress[chapter.id][:started] += 1
-          elsif pub_progress["current_content_id"] == chapter.id
-            chapter_progress[chapter.id][:started] += 1
+        completed_readers += 1 if completion_percentage >= 100
+
+        # Track per-chapter progress using Set for fast lookups
+        current_content_id = pub_progress["current_content_id"]
+
+        chapter_ids.each do |chapter_id|
+          if completed_chapters.include?(chapter_id)
+            chapter_progress[chapter_id][:completed] += 1
+            chapter_progress[chapter_id][:started] += 1
+          elsif current_content_id == chapter_id
+            chapter_progress[chapter_id][:started] += 1
           end
         end
       end
 
+      # If truncated, extrapolate to estimate full counts
+      if truncated && processed_count > 0
+        scale_factor = total_readers.to_f / processed_count
+        completed_readers = (completed_readers * scale_factor).round
+        chapter_ids.each do |id|
+          chapter_progress[id][:started] = (chapter_progress[id][:started] * scale_factor).round
+          chapter_progress[id][:completed] = (chapter_progress[id][:completed] * scale_factor).round
+        end
+      end
+
       average_progress =
-        total_readers.positive? ? (total_completion_percentage / total_readers).round(1) : 0
+        processed_count.positive? ? (total_completion_percentage / processed_count).round(1) : 0
 
       by_chapter =
         chapters.map do |chapter|
@@ -818,6 +884,8 @@ module Bookclub
         completed_readers: completed_readers,
         average_progress: average_progress,
         by_chapter: by_chapter,
+        truncated: truncated,
+        sample_size: truncated ? sample_size : nil,
       }
     end
 

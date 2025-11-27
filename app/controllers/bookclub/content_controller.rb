@@ -12,9 +12,7 @@ module Bookclub
           raise Discourse::NotFound unless publication
 
           # Check if user is author/editor/admin
-          is_author_or_editor =
-            guardian.is_publication_author?(publication) ||
-              guardian.is_publication_editor?(publication) || guardian.is_admin?
+          is_author_or_editor = guardian.can_manage_publication?(publication)
 
           # Support both /book/slug/2 (numeric) and /book/slug/chapter-slug (slug) formats
           chapter_id = params[:chapter_id] || params[:content_number] || params[:number]
@@ -56,6 +54,9 @@ module Bookclub
       chapter = find_chapter(publication, chapter_number)
       raise Discourse::NotFound unless chapter
 
+      ensure_publication_access!(publication)
+      ensure_chapter_access!(chapter)
+
       progress = current_user.custom_fields[READING_PROGRESS] || {}
       pub_slug = publication.custom_fields[PUBLICATION_SLUG]
 
@@ -80,14 +81,18 @@ module Bookclub
 
     def serialize_chapter_detail(publication, chapter, content_topic)
       first_post = content_topic.first_post
-      discussion_topics = find_discussion_topics(chapter).limit(10)
+      # Preload users to avoid N+1 queries when serializing discussions
+      all_discussion_topics = find_discussion_topics(chapter)
+      # Get accurate count before limiting
+      total_count = all_discussion_topics.count
+      discussion_topics = all_discussion_topics.includes(:user).limit(10)
 
       {
         publication: serialize_publication(publication),
         chapter: serialize_chapter(chapter, content_topic, first_post),
         navigation: build_navigation(publication, chapter),
         reading_progress: current_user ? load_reading_progress(publication) : nil,
-        discussions: serialize_discussions(chapter, discussion_topics),
+        discussions: serialize_discussions(chapter, discussion_topics, total_count),
         feedback_settings: publication.custom_fields[PUBLICATION_FEEDBACK_SETTINGS],
       }
     end
@@ -116,19 +121,22 @@ module Bookclub
         contributors: chapter.custom_fields[CHAPTER_CONTRIBUTORS],
         review_status: chapter.custom_fields[CHAPTER_REVIEW_STATUS],
         body_html: strip_leading_title(first_post.cooked, chapter.name),
-        body_raw: guardian.is_publication_author?(publication) ? first_post.raw : nil,
+        body_raw: guardian.can_manage_publication?(publication) ? first_post.raw : nil,
         content_topic_id: content_topic.id,
         created_at: chapter.created_at,
         updated_at: first_post.updated_at,
       }
     end
 
-    def serialize_discussions(chapter, discussion_topics)
+    def serialize_discussions(chapter, discussion_topics, total_count)
       {
         chapter_id: chapter.id,
-        topic_count: discussion_topics.count,
+        topic_count: total_count,
         topics:
           discussion_topics.map do |topic|
+            # Skip topics with deleted users
+            next unless topic.user
+
             {
               id: topic.id,
               title: topic.title,
@@ -143,7 +151,8 @@ module Bookclub
                 avatar_url: topic.user.avatar_template_url.gsub("{size}", "45"),
               },
             }
-          end,
+          end
+          .compact,
       }
     end
 
@@ -213,9 +222,7 @@ module Bookclub
 
     def find_published_chapters(publication)
       chapters = find_chapters(publication)
-      is_author_or_editor =
-        guardian.is_publication_author?(publication) ||
-          guardian.is_publication_editor?(publication) || guardian.is_admin?
+      is_author_or_editor = guardian.can_manage_publication?(publication)
 
       return chapters if is_author_or_editor
 

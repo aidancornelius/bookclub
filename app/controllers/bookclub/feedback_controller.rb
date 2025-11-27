@@ -43,11 +43,9 @@ module Bookclub
           when 'public'
             true
           when 'author_only'
-            guardian.is_publication_author?(publication) ||
-              guardian.is_publication_editor?(publication) || post.user_id == current_user&.id
+            guardian.can_manage_publication?(publication) || post.user_id == current_user&.id
           when 'reviewers_only'
-            guardian.is_publication_author?(publication) ||
-              guardian.is_publication_editor?(publication) || is_reviewer?(topic, current_user)
+            guardian.can_manage_publication?(publication) || is_reviewer?(topic, current_user)
           else
             true
           end
@@ -143,25 +141,17 @@ module Bookclub
       raise Discourse::NotFound unless publication.custom_fields[PUBLICATION_ENABLED]
 
       # Only allow update by author, publication author/editor, or admin
-      unless post.user_id == current_user.id || guardian.is_publication_author?(publication) ||
-             guardian.is_publication_editor?(publication) || guardian.is_admin?
+      unless post.user_id == current_user.id || guardian.can_manage_publication?(publication)
         raise Discourse::InvalidAccess
       end
 
       # Update allowed fields
       if params.key?(:visibility) &&
-         (
-           guardian.is_publication_author?(publication) ||
-             guardian.is_publication_editor?(publication) || post.user_id == current_user.id
-         )
+         (guardian.can_manage_publication?(publication) || post.user_id == current_user.id)
         post.custom_fields[FEEDBACK_VISIBILITY_FIELD] = params[:visibility]
       end
 
-      if params.key?(:status) &&
-         (
-           guardian.is_publication_author?(publication) ||
-             guardian.is_publication_editor?(publication)
-         )
+      if params.key?(:status) && guardian.can_manage_publication?(publication)
         post.custom_fields[FEEDBACK_STATUS_FIELD] = params[:status]
       end
 
@@ -203,8 +193,7 @@ module Bookclub
       post.custom_fields[FEEDBACK_STATUS_FIELD] = 'accepted'
       post.save_custom_fields
 
-      # Optionally notify the suggester
-      # TODO: Implement notification
+      notify_suggestion_author(post, publication, 'accepted')
 
       render json: { success: true, feedback: serialize_feedback(post, publication) }
     end
@@ -226,6 +215,8 @@ module Bookclub
       post.custom_fields[FEEDBACK_STATUS_FIELD] = 'declined'
       post.save_custom_fields
 
+      notify_suggestion_author(post, publication, 'declined')
+
       render json: { success: true, feedback: serialize_feedback(post, publication) }
     end
 
@@ -234,6 +225,34 @@ module Bookclub
     def serialize_feedback(post, publication)
       anchor = post.custom_fields[FEEDBACK_ANCHOR_FIELD]
 
+      # Guard against corrupted JSON in anchor field
+      parsed_anchor = nil
+      if anchor.present?
+        begin
+          parsed_anchor = JSON.parse(anchor)
+        rescue JSON::ParserError => e
+          Rails.logger.warn("[Bookclub] Invalid JSON in feedback anchor for post #{post.id}: #{e.message}")
+          parsed_anchor = nil
+      end
+    end
+
+    def notify_suggestion_author(post, publication, status)
+      Notification.create!(
+        user_id: post.user_id,
+        notification_type: Notification.types[:custom],
+        topic_id: post.topic_id,
+        post_number: post.post_number,
+        data: {
+          message: "Suggestion #{status} for #{publication.name}",
+          display_username: current_user.username
+        }.to_json
+      )
+    rescue StandardError => e
+      Rails.logger.error(
+        "[Bookclub] Failed to notify suggestion author for post #{post.id}: #{e.class.name} - #{e.message}"
+      )
+    end
+
       {
         id: post.id,
         post_number: post.post_number,
@@ -241,7 +260,7 @@ module Bookclub
         visibility: post.custom_fields[FEEDBACK_VISIBILITY_FIELD] || 'public',
         status: post.custom_fields[FEEDBACK_STATUS_FIELD] || 'pending',
         attribution: post.custom_fields[FEEDBACK_ATTRIBUTION_FIELD] != false,
-        anchor: anchor.present? ? JSON.parse(anchor) : nil,
+        anchor: parsed_anchor,
         body: post.cooked,
         raw: post.raw,
         created_at: post.created_at,
@@ -253,11 +272,9 @@ module Bookclub
           avatar_url: post.user.avatar_template_url.gsub('{size}', '45')
         },
         can_edit:
-          post.user_id == current_user&.id || guardian.is_publication_author?(publication) ||
-            guardian.is_publication_editor?(publication),
+          post.user_id == current_user&.id || guardian.can_manage_publication?(publication),
         can_moderate:
-          guardian.is_publication_author?(publication) ||
-            guardian.is_publication_editor?(publication) || guardian.is_admin?
+          guardian.can_manage_publication?(publication)
       }
     end
 

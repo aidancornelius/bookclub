@@ -108,6 +108,12 @@ export default class BookclubChapterList extends Component {
 
   /**
    * Save the new order after drag-and-drop
+   *
+   * NOTE: Reading DOM order is necessary here because the drag-and-drop implementation
+   * physically reorders DOM elements (see handleDragOver in setupDraggable).
+   * The DOM reflects the user's intended order after dragging is complete.
+   * An alternative would be to track order changes in state during drag operations,
+   * but that would require synchronizing DOM updates with state updates which adds complexity.
    */
   @action
   async saveOrder() {

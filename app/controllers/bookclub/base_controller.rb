@@ -41,11 +41,20 @@ module Bookclub
       CHAPTER_REVIEW_STATUS
     ].freeze
 
-    # Load all categories with custom fields preloaded to avoid N+1 queries
+    # Load categories with custom fields preloaded to avoid N+1 queries
+    # Optimised to only load Bookclub publications and chapters, not all site categories
     def categories_with_custom_fields
       @categories_with_custom_fields ||=
         begin
-          cats = Category.all.to_a
+          # Only load categories that are Bookclub publications (have PUBLICATION_ENABLED) or
+          # Bookclub chapters (have CHAPTER_ENABLED). This prevents loading all forum subcategories.
+          cats = Category.where(
+            "EXISTS (SELECT 1 FROM category_custom_fields ccf WHERE ccf.category_id = categories.id AND ccf.name = ?) OR " \
+            "EXISTS (SELECT 1 FROM category_custom_fields ccf2 WHERE ccf2.category_id = categories.id AND ccf2.name = ?)",
+            PUBLICATION_ENABLED,
+            CHAPTER_ENABLED
+          ).to_a
+
           Category.preload_custom_fields(cats, PUBLICATION_CUSTOM_FIELDS + CHAPTER_CUSTOM_FIELDS)
           cats
         end
@@ -128,8 +137,7 @@ module Bookclub
     end
 
     def ensure_author_or_editor!(publication)
-      unless guardian.is_publication_author?(publication) ||
-             guardian.is_publication_editor?(publication) || guardian.is_admin?
+      unless guardian.can_manage_publication?(publication)
         raise Discourse::InvalidAccess.new(
           'You must be an author or editor to perform this action',
           nil,
