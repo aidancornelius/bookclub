@@ -81,3 +81,16 @@ plugins:
     default: true
     client: false
     description: "When Stripe is disabled, use manual group assignment for access control"
+
+  bookclub_default_preview_chapters:
+    default: 2
+    type: integer
+    min: 0
+    max: 20
+    client: true
+    description: "Default number of free preview chapters for new publications"
+
+  bookclub_currency_symbol:
+    default: "$"
+    client: true
+    description: "Currency symbol to display in pricing UI"

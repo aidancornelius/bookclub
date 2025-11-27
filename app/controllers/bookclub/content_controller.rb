@@ -27,10 +27,21 @@ module Bookclub
           end
 
           unless guardian.can_access_chapter?(chapter)
+            pricing_config = publication.custom_fields[PRICING_CONFIG] || {}
+            preview_chapters = pricing_config['preview_chapters'] || 0
+            current_chapter = chapter.custom_fields[CHAPTER_NUMBER]&.to_i || 0
+            preview_remaining = [preview_chapters - current_chapter + 1, 0].max
+
             render json: {
                      error: "access_denied",
                      paywall: true,
                      access_tiers: publication.custom_fields[PUBLICATION_ACCESS_TIERS],
+                     pricing_config: pricing_config,
+                     publication_slug: publication.custom_fields[PUBLICATION_SLUG],
+                     publication_name: publication.name,
+                     chapter_number: current_chapter,
+                     preview_chapters: preview_chapters,
+                     preview_remaining: preview_remaining
                    },
                    status: :forbidden
             return

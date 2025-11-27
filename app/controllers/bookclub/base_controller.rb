@@ -25,7 +25,9 @@ module Bookclub
       PUBLICATION_EDITOR_IDS,
       PUBLICATION_ACCESS_TIERS,
       PUBLICATION_FEEDBACK_SETTINGS,
-      PUBLICATION_IDENTIFIER
+      PUBLICATION_IDENTIFIER,
+      PRICING_CONFIG,
+      STRIPE_PRODUCT_ID
     ].freeze
 
     # Custom fields to preload for chapters
@@ -38,7 +40,8 @@ module Bookclub
       CHAPTER_SUMMARY,
       CHAPTER_WORD_COUNT,
       CHAPTER_CONTRIBUTORS,
-      CHAPTER_REVIEW_STATUS
+      CHAPTER_REVIEW_STATUS,
+      CHAPTER_ACCESS_OVERRIDE
     ].freeze
 
     # Load categories with custom fields preloaded to avoid N+1 queries

@@ -28,6 +28,7 @@ Bookclub::Engine.routes.draw do
     get "/publications/:slug/pricing" => "pricing#tiers"
     get "/publications/:slug/subscription" => "pricing#subscription_status"
     post "/publications/:slug/checkout" => "pricing#create_checkout"
+    post "/publications/:slug/verify-checkout" => "pricing#verify_checkout"
     post "/publications/:slug/customer-portal" => "pricing#create_portal_session"
     get "/publications/:slug/subscription-success" => "pricing#success"
     get "/publications/:slug/subscription-cancelled" => "pricing#cancelled"
@@ -76,5 +77,13 @@ Bookclub::Engine.routes.draw do
     # Suggestions workflow
     post "/suggestions/:id/accept" => "feedback#accept_suggestion"
     post "/suggestions/:id/decline" => "feedback#decline_suggestion"
+  end
+
+  # Admin pricing routes
+  namespace :admin do
+    get '/publications/:publication_slug/pricing' => 'pricing#show'
+    put '/publications/:publication_slug/pricing' => 'pricing#update'
+    post '/publications/:publication_slug/pricing/create-stripe-product' => 'pricing#create_stripe_product'
+    post '/publications/:publication_slug/pricing/sync-stripe' => 'pricing#sync_stripe'
   end
 end

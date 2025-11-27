@@ -114,6 +114,12 @@ en:
       get_access: "Get access"
       login_prompt: "Already have access? Log in to continue."
 
+    pricing:
+      access_granted: "You now have access to %{publication_name}"
+      access_revoked: "Your access to %{publication_name} has been revoked"
+      purchase_complete: "Thank you for your purchase of %{publication_name}"
+      subscription_active: "Your subscription to %{publication_name} is now active"
+
     access_tiers:
       title: "Access options"
       community: "Community"

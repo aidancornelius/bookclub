@@ -27,6 +27,14 @@ register_svg_icon 'file-zipper'
 register_svg_icon 'folder'
 register_svg_icon 'file-check'
 register_svg_icon 'upload'
+register_svg_icon 'credit-card'
+register_svg_icon 'check'
+register_svg_icon 'arrows-rotate'
+register_svg_icon 'spinner'
+register_svg_icon 'triangle-exclamation'
+register_svg_icon 'plus'
+register_svg_icon 'unlock'
+register_svg_icon 'lock-open'
 
 module ::Bookclub
   PLUGIN_NAME = 'bookclub'
@@ -97,6 +105,12 @@ module ::Bookclub
 
   # Subscription metadata (user custom fields)
   SUBSCRIPTION_METADATA = 'bookclub_subscriptions'
+
+  # Pricing configuration (publication custom fields)
+  PRICING_CONFIG = 'bookclub_pricing_config'
+  STRIPE_PRODUCT_ID = 'bookclub_stripe_product_id'
+  # Chapter access override
+  CHAPTER_ACCESS_OVERRIDE = 'bookclub_chapter_access_override'
 end
 
 require_relative 'lib/bookclub/engine'
@@ -129,6 +143,8 @@ after_initialize do
   register_category_custom_field_type(Bookclub::PUBLICATION_ACCESS_TIERS, :json)
   register_category_custom_field_type(Bookclub::PUBLICATION_FEEDBACK_SETTINGS, :json)
   register_category_custom_field_type(Bookclub::PUBLICATION_IDENTIFIER, :string, max_length: 50)
+  register_category_custom_field_type(Bookclub::PRICING_CONFIG, :json)
+  register_category_custom_field_type(Bookclub::CHAPTER_ACCESS_OVERRIDE, :string, max_length: 20)
 
   # Chapter fields (subcategories representing chapters/articles)
   register_category_custom_field_type(Bookclub::CHAPTER_ENABLED, :boolean)
@@ -159,6 +175,8 @@ after_initialize do
   Site.preloaded_category_custom_fields << Bookclub::PUBLICATION_ACCESS_TIERS
   Site.preloaded_category_custom_fields << Bookclub::PUBLICATION_FEEDBACK_SETTINGS
   Site.preloaded_category_custom_fields << Bookclub::PUBLICATION_IDENTIFIER
+  Site.preloaded_category_custom_fields << Bookclub::PRICING_CONFIG
+  Site.preloaded_category_custom_fields << Bookclub::CHAPTER_ACCESS_OVERRIDE
 
   # Preload chapter fields
   Site.preloaded_category_custom_fields << Bookclub::CHAPTER_ENABLED
@@ -238,6 +256,14 @@ after_initialize do
 
   add_to_serializer(:basic_category, :publication_feedback_settings) do
     object.bookclub_custom_field(Bookclub::PUBLICATION_FEEDBACK_SETTINGS)
+  end
+
+  add_to_serializer(:basic_category, :bookclub_pricing_config, include_condition: -> { scope&.is_admin? }) do
+    object.bookclub_custom_field(Bookclub::PRICING_CONFIG)
+  end
+
+  add_to_serializer(:basic_category, :chapter_access_override) do
+    object.bookclub_custom_field(Bookclub::CHAPTER_ACCESS_OVERRIDE)
   end
 
   # Add chapter fields to category serializer (for chapter subcategories)
@@ -344,6 +370,17 @@ after_initialize do
 
     return true unless category.custom_fields[Bookclub::PUBLICATION_ENABLED]
 
+    # Check for new pricing system first
+    pricing_config = category.custom_fields[Bookclub::PRICING_CONFIG]
+    pricing_enabled = pricing_config.is_a?(Hash) &&
+      [true, 'true', 't'].include?(pricing_config['enabled'])
+
+    if pricing_enabled
+      # With pricing enabled, user needs to have purchased access
+      return has_publication_purchase?(category, pricing_config)
+    end
+
+    # Fall back to legacy tier-based access
     access_tiers = category.custom_fields[Bookclub::PUBLICATION_ACCESS_TIERS]
     return true if access_tiers.blank?
 
@@ -374,6 +411,67 @@ after_initialize do
     # Authors and editors always have access
     return true if is_publication_author?(publication) || is_publication_editor?(publication)
 
+    # Check for new pricing system first
+    pricing_config = publication.custom_fields[Bookclub::PRICING_CONFIG]
+    # Handle both boolean and string values for 'enabled' (form data sends strings)
+    pricing_enabled = pricing_config.is_a?(Hash) &&
+      [true, 'true', 't'].include?(pricing_config['enabled'])
+    if pricing_enabled
+      return pricing_based_access?(chapter, publication, pricing_config)
+    end
+
+    # Fall back to legacy tier-based access
+    legacy_tier_access?(chapter, publication)
+  end
+
+  add_to_class(:guardian, :pricing_based_access?) do |chapter, publication, pricing_config|
+    chapter_override = chapter.custom_fields[Bookclub::CHAPTER_ACCESS_OVERRIDE]
+
+    # Public chapters always accessible
+    return true if chapter_override == 'public'
+
+    # Check if user has purchased access (one-time or subscription)
+    return true if has_publication_purchase?(publication, pricing_config)
+
+    # For 'inherit' or nil chapters, check preview count
+    if chapter_override.blank? || chapter_override == 'inherit'
+      preview_count = pricing_config['preview_chapters'].to_i
+      if preview_count > 0
+        chapter_position = get_chapter_position(chapter, publication)
+        return true if chapter_position <= preview_count
+      end
+    end
+
+    false
+  end
+
+  add_to_class(:guardian, :has_publication_purchase?) do |publication, pricing_config|
+    return false unless @user.is_a?(User)
+
+    access_group = pricing_config['access_group']
+
+    # Fall back to default group naming convention if no access_group configured
+    if access_group.blank?
+      pub_slug = publication.custom_fields[Bookclub::PUBLICATION_SLUG] || publication.slug
+      access_group = "#{pub_slug}_readers"
+    end
+
+    group = Group.find_by(name: access_group)
+    return false unless group
+
+    @user.group_ids.include?(group.id)
+  end
+
+  add_to_class(:guardian, :get_chapter_position) do |chapter, publication|
+    chapters = publication.subcategories
+      .select { |c| c.custom_fields[Bookclub::CHAPTER_ENABLED] }
+      .sort_by { |c| c.custom_fields[Bookclub::CHAPTER_NUMBER].to_i }
+
+    position = chapters.find_index { |c| c.id == chapter.id }
+    position ? position + 1 : 999
+  end
+
+  add_to_class(:guardian, :legacy_tier_access?) do |chapter, publication|
     # Check publication-level access first
     return false unless can_access_publication?(publication)
 
@@ -399,8 +497,7 @@ after_initialize do
     # Find the user's highest access tier
     user_tiers = []
     access_tiers.each do |group_name, level|
-      next if group_name == 'everyone' # Already handled above
-
+      next if group_name == 'everyone'
       group = Group.find_by(name: group_name)
       user_tiers << level if group && user_group_ids.include?(group.id)
     end
@@ -440,6 +537,38 @@ after_initialize do
       is_admin?
   end
 
+  add_to_class(:guardian, :paywall_info_for_chapter) do |chapter|
+    publication = chapter.parent_category
+    return nil unless publication&.custom_fields&.[](Bookclub::PUBLICATION_ENABLED)
+
+    pricing_config = publication.custom_fields[Bookclub::PRICING_CONFIG]
+    # Handle both boolean and string values for 'enabled' (form data sends strings)
+    pricing_enabled = pricing_config.is_a?(Hash) &&
+      [true, 'true', 't'].include?(pricing_config['enabled'])
+    return nil unless pricing_enabled
+
+    # If user has access, no paywall
+    return nil if can_access_chapter?(chapter)
+
+    chapter_position = get_chapter_position(chapter, publication)
+    preview_count = pricing_config['preview_chapters'].to_i
+
+    {
+      publication_id: publication.id,
+      publication_name: publication.name,
+      publication_slug: publication.custom_fields[Bookclub::PUBLICATION_SLUG],
+      chapter_position: chapter_position,
+      preview_chapters: preview_count,
+      preview_remaining: [preview_count - chapter_position + 1, 0].max,
+      one_time_price_id: pricing_config['one_time_price_id'],
+      one_time_amount: pricing_config['one_time_amount'],
+      subscription_price_id: pricing_config['subscription_price_id'],
+      subscription_amount: pricing_config['subscription_amount'],
+      subscription_interval: pricing_config['subscription_interval'] || 'month',
+      currency: SiteSetting.respond_to?(:discourse_subscriptions_currency) ? SiteSetting.discourse_subscriptions_currency : 'USD'
+    }
+  end
+
   # -----------------------------------------------------------------
   # Stripe integration via discourse-subscriptions
   # -----------------------------------------------------------------
@@ -468,18 +597,23 @@ after_initialize do
     next unless SiteSetting.bookclub_enabled
     next unless SiteSetting.bookclub_stripe_integration
 
-    publications_with_tier =
-      Category
-      .where('custom_fields @> ?', { Bookclub::PUBLICATION_ENABLED => true }.to_json)
-      .select do |category|
-        access_tiers = category.custom_fields[Bookclub::PUBLICATION_ACCESS_TIERS] || {}
-        access_tiers.key?(group.name)
-      end
+    begin
+      publications_with_tier =
+        Category
+        .joins("INNER JOIN category_custom_fields ON category_custom_fields.category_id = categories.id")
+        .where("category_custom_fields.name = ? AND category_custom_fields.value = ?", Bookclub::PUBLICATION_ENABLED, "true")
+        .select do |category|
+          access_tiers = category.custom_fields[Bookclub::PUBLICATION_ACCESS_TIERS]
+          access_tiers.is_a?(Hash) && access_tiers.key?(group.name)
+        end
 
-    if publications_with_tier.any?
-      Rails.logger.info(
-        "[Bookclub] User #{user.id} added to group #{group.name}, has access to #{publications_with_tier.count} publication(s)"
-      )
+      if publications_with_tier.any?
+        Rails.logger.info(
+          "[Bookclub] User #{user.id} added to group #{group.name}, has access to #{publications_with_tier.count} publication(s)"
+        )
+      end
+    rescue => e
+      Rails.logger.error("[Bookclub] Error in user_added_to_group hook: #{e.message}")
     end
   end
 
@@ -487,18 +621,23 @@ after_initialize do
     next unless SiteSetting.bookclub_enabled
     next unless SiteSetting.bookclub_stripe_integration
 
-    publications_with_tier =
-      Category
-      .where('custom_fields @> ?', { Bookclub::PUBLICATION_ENABLED => true }.to_json)
-      .select do |category|
-        access_tiers = category.custom_fields[Bookclub::PUBLICATION_ACCESS_TIERS] || {}
-        access_tiers.key?(group.name)
-      end
+    begin
+      publications_with_tier =
+        Category
+        .joins("INNER JOIN category_custom_fields ON category_custom_fields.category_id = categories.id")
+        .where("category_custom_fields.name = ? AND category_custom_fields.value = ?", Bookclub::PUBLICATION_ENABLED, "true")
+        .select do |category|
+          access_tiers = category.custom_fields[Bookclub::PUBLICATION_ACCESS_TIERS]
+          access_tiers.is_a?(Hash) && access_tiers.key?(group.name)
+        end
 
-    if publications_with_tier.any?
-      Rails.logger.info(
-        "[Bookclub] User #{user.id} removed from group #{group.name}, lost access to #{publications_with_tier.count} publication(s)"
-      )
+      if publications_with_tier.any?
+        Rails.logger.info(
+          "[Bookclub] User #{user.id} removed from group #{group.name}, lost access to #{publications_with_tier.count} publication(s)"
+        )
+      end
+    rescue => e
+      Rails.logger.error("[Bookclub] Error in user_removed_from_group hook: #{e.message}")
     end
   end
 end

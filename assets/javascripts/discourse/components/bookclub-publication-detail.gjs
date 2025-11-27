@@ -7,6 +7,7 @@ import DButton from "discourse/components/d-button";
 import icon from "discourse/helpers/d-icon";
 import { eq } from "discourse/truth-helpers";
 import BookclubChapterList from "./bookclub-chapter-list";
+import BookclubPublicationPricing from "./bookclub-publication-pricing";
 import BookclubPublicationSettings from "./bookclub-publication-settings";
 import BookclubPublicationStats from "./bookclub-publication-stats";
 
@@ -42,6 +43,14 @@ export default class BookclubPublicationDetail extends Component {
   @action
   showSettings() {
     this.activeTab = "settings";
+  }
+
+  /**
+   * Switch to pricing tab
+   */
+  @action
+  showPricing() {
+    this.activeTab = "pricing";
   }
 
   /**
@@ -125,6 +134,14 @@ export default class BookclubPublicationDetail extends Component {
           {{icon "gear"}}
           Settings
         </button>
+        <button
+          type="button"
+          class="bookclub-pub-detail__nav-item {{if (eq this.activeTab 'pricing') 'bookclub-pub-detail__nav-item--active'}}"
+          {{on "click" this.showPricing}}
+        >
+          {{icon "credit-card"}}
+          Pricing
+        </button>
       </nav>
 
       <div class="bookclub-pub-detail__content">
@@ -143,6 +160,10 @@ export default class BookclubPublicationDetail extends Component {
           <BookclubPublicationSettings
             @publication={{this.publication}}
             @onUpdate={{this.handlePublicationUpdate}}
+          />
+        {{else if (eq this.activeTab "pricing")}}
+          <BookclubPublicationPricing
+            @publication={{this.publication}}
           />
         {{/if}}
       </div>

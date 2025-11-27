@@ -8,6 +8,7 @@ import DiscourseRoute from "discourse/routes/discourse";
  */
 export default class BookclubContentRoute extends DiscourseRoute {
   @service bookclubReading;
+  @service router;
 
   /**
    * Load chapter data
@@ -15,6 +16,24 @@ export default class BookclubContentRoute extends DiscourseRoute {
    * @returns {Promise<Object>} Chapter data
    */
   async model(params) {
+    // Check if returning from Stripe checkout
+    const urlParams = new URLSearchParams(window.location.search);
+    const checkoutSessionId = urlParams.get("checkout_session_id");
+
+    if (checkoutSessionId) {
+      // Return special model to trigger checkout verification
+      return {
+        verifyingCheckout: true,
+        checkoutSessionId,
+        slug: params.slug,
+        chapter_id: params.chapter_id,
+      };
+    }
+
+    return await this.loadContent(params);
+  }
+
+  async loadContent(params) {
     try {
       return await ajax(
         `/bookclub/publications/${params.slug}/chapters/${params.chapter_id}.json`
@@ -32,6 +51,12 @@ export default class BookclubContentRoute extends DiscourseRoute {
           slug: params.slug,
           chapter_id: params.chapter_id,
           access_tiers: responseJSON.access_tiers,
+          pricing_config: responseJSON.pricing_config,
+          publication_slug: responseJSON.publication_slug,
+          publication_name: responseJSON.publication_name,
+          chapter_number: responseJSON.chapter_number,
+          preview_chapters: responseJSON.preview_chapters,
+          preview_remaining: responseJSON.preview_remaining,
         };
       }
       throw error;
@@ -46,10 +71,29 @@ export default class BookclubContentRoute extends DiscourseRoute {
   setupController(controller, model) {
     super.setupController(controller, model);
 
+    if (model.verifyingCheckout) {
+      controller.setProperties({
+        verifyingCheckout: true,
+        checkoutSessionId: model.checkoutSessionId,
+        slug: model.slug,
+        chapterId: model.chapter_id,
+        paywall: false,
+      });
+      // Trigger verification in the controller/template
+      return;
+    }
+
     if (model.paywall) {
       controller.setProperties({
         paywall: true,
+        verifyingCheckout: false,
         accessTiers: model.access_tiers,
+        pricingConfig: model.pricing_config,
+        publicationSlug: model.publication_slug,
+        publicationName: model.publication_name,
+        chapterNumber: model.chapter_number,
+        previewChapters: model.preview_chapters,
+        previewRemaining: model.preview_remaining,
         slug: model.slug,
         chapterId: model.chapter_id,
       });
@@ -58,6 +102,7 @@ export default class BookclubContentRoute extends DiscourseRoute {
 
     controller.setProperties({
       paywall: false,
+      verifyingCheckout: false,
       publication: model.publication,
       chapter: model.chapter,
       navigation: model.navigation,

@@ -1,3 +1,4 @@
+import { hash } from "@ember/helper";
 import { LinkTo } from "@ember/routing";
 import { htmlSafe } from "@ember/template";
 import bodyClass from "discourse/helpers/body-class";
@@ -5,8 +6,11 @@ import icon from "discourse/helpers/d-icon";
 import BookclubBookmarkButton from "discourse/plugins/bookclub/discourse/components/bookclub-bookmark-button";
 import BookclubChapterDiscussions from "discourse/plugins/bookclub/discourse/components/bookclub-chapter-discussions";
 import BookclubChapterNav from "discourse/plugins/bookclub/discourse/components/bookclub-chapter-nav";
+import BookclubCheckoutVerify from "discourse/plugins/bookclub/discourse/components/bookclub-checkout-verify";
 import BookclubDiscussButton from "discourse/plugins/bookclub/discourse/components/bookclub-discuss-button";
 import BookclubMobileNav from "discourse/plugins/bookclub/discourse/components/bookclub-mobile-nav";
+import BookclubPaywallDisplay from "discourse/plugins/bookclub/discourse/components/bookclub-paywall-display";
+import BookclubPaywallModal from "discourse/plugins/bookclub/discourse/components/bookclub-paywall-modal";
 import BookclubPricingTiers from "discourse/plugins/bookclub/discourse/components/bookclub-pricing-tiers";
 import BookclubProgressBar from "discourse/plugins/bookclub/discourse/components/bookclub-progress-bar";
 import BookclubReadingHeader from "discourse/plugins/bookclub/discourse/components/bookclub-reading-header";
@@ -17,11 +21,32 @@ import BookclubTocToggle from "discourse/plugins/bookclub/discourse/components/b
 
 export default <template>
   {{bodyClass "bookclub-page"}}
-  {{#if @controller.paywall}}
-    <BookclubPricingTiers
-      @publicationSlug={{@controller.slug}}
-      @accessTiers={{@controller.accessTiers}}
+  {{#if @controller.verifyingCheckout}}
+    <BookclubCheckoutVerify
+      @slug={{@controller.slug}}
+      @sessionId={{@controller.checkoutSessionId}}
     />
+  {{else if @controller.paywall}}
+    {{#if @controller.pricingConfig}}
+      <BookclubPaywallDisplay
+        @paywall={{hash
+          publication_name=@controller.publicationName
+          publication_slug=@controller.publicationSlug
+          preview_chapters=@controller.previewChapters
+          preview_remaining=@controller.previewRemaining
+          one_time_price_id=@controller.pricingConfig.one_time_price_id
+          one_time_amount=@controller.pricingConfig.one_time_amount
+          subscription_price_id=@controller.pricingConfig.subscription_price_id
+          subscription_amount=@controller.pricingConfig.subscription_amount
+          subscription_interval=@controller.pricingConfig.subscription_interval
+        }}
+      />
+    {{else}}
+      <BookclubPricingTiers
+        @publicationSlug={{@controller.slug}}
+        @accessTiers={{@controller.accessTiers}}
+      />
+    {{/if}}
   {{else}}
     <div class="bookclub-content-view">
       <BookclubReadingHeader

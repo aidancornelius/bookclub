@@ -90,7 +90,12 @@ module Bookclub
       is_author = guardian.is_publication_author?(publication)
       chapters = find_chapters(publication)
 
-      {
+      # Check if pricing is enabled
+      pricing_config = publication.custom_fields[PRICING_CONFIG]
+      pricing_enabled = pricing_config.is_a?(Hash) &&
+        [true, 'true', 't'].include?(pricing_config['enabled'])
+
+      result = {
         id: publication.id,
         name: publication.name,
         slug: publication.custom_fields[PUBLICATION_SLUG] || publication.slug,
@@ -108,7 +113,20 @@ module Bookclub
         toc: build_table_of_contents(publication),
         chapter_count: chapters.count,
         total_word_count: total_word_count(chapters),
+        is_paid: pricing_enabled,
       }
+
+      # Include pricing info for paid publications
+      if pricing_enabled
+        result[:pricing] = {
+          preview_chapters: pricing_config['preview_chapters'].to_i,
+          one_time_amount: pricing_config['one_time_amount'],
+          subscription_amount: pricing_config['subscription_amount'],
+          subscription_interval: pricing_config['subscription_interval'] || 'month',
+        }
+      end
+
+      result
     end
 
     def load_authors(author_ids)
@@ -128,8 +146,13 @@ module Bookclub
 
     def build_table_of_contents(publication)
       chapters = find_chapters(publication)
-      has_publication_access = guardian.can_access_publication?(publication)
       is_author_or_editor = guardian.can_manage_publication?(publication)
+
+      # Check if new pricing system is enabled
+      pricing_config = publication.custom_fields[PRICING_CONFIG]
+      pricing_enabled = pricing_config.is_a?(Hash) &&
+        [true, 'true', 't'].include?(pricing_config['enabled'])
+      preview_chapters = pricing_enabled ? pricing_config['preview_chapters'].to_i : 0
 
       # Filter out unpublished chapters for non-authors/editors
       visible_chapters =
@@ -140,12 +163,24 @@ module Bookclub
           is_author_or_editor || is_published
         end
 
-      visible_chapters.map do |chapter|
-        access_level = chapter.custom_fields[CHAPTER_ACCESS_LEVEL]
-        is_free = access_level.blank? || access_level == "free"
-        has_chapter_access = has_publication_access && guardian.can_access_chapter?(chapter)
+      visible_chapters.map.with_index do |chapter, index|
+        chapter_position = index + 1
         published = chapter.custom_fields[CHAPTER_PUBLISHED]
         is_published = boolean_custom_field?(published)
+
+        # Determine if chapter is free/accessible
+        if pricing_enabled
+          # With pricing enabled, only preview chapters are free
+          is_preview = preview_chapters > 0 && chapter_position <= preview_chapters
+          has_chapter_access = guardian.can_access_chapter?(chapter)
+          is_free = is_preview
+          has_access = is_preview || has_chapter_access
+        else
+          # Without pricing, use legacy access_level
+          access_level = chapter.custom_fields[CHAPTER_ACCESS_LEVEL]
+          is_free = access_level.blank? || access_level == "free"
+          has_access = is_free || guardian.can_access_chapter?(chapter)
+        end
 
         {
           id: chapter.id,
@@ -153,10 +188,9 @@ module Bookclub
           number: chapter.custom_fields[CHAPTER_NUMBER]&.to_i,
           type: chapter.custom_fields[CHAPTER_TYPE] || "chapter",
           published: is_published,
-          access_level: access_level || "free",
           word_count: chapter.custom_fields[CHAPTER_WORD_COUNT]&.to_i,
           summary: chapter.custom_fields[CHAPTER_SUMMARY],
-          has_access: is_free || has_chapter_access,
+          has_access: has_access,
           is_free: is_free,
           slug: chapter.slug,
         }

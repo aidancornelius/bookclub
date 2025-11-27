@@ -21,7 +21,7 @@ module Bookclub
         )
       end
 
-      stripe_product_id = publication.custom_fields['bookclub_stripe_product_id']
+      stripe_product_id = publication.custom_fields[STRIPE_PRODUCT_ID]
 
       if stripe_product_id.blank?
         return render json: { tiers: [], message: 'No pricing available for this publication' }
@@ -142,6 +142,97 @@ module Bookclub
       }
     end
 
+    # Verify a checkout session and grant access if successful
+    # This is a fallback for when webhooks don't arrive (e.g., local development)
+    def verify_checkout
+      return render json: { error: 'not_logged_in' }, status: :unauthorized unless current_user
+      return render json: { error: 'stripe_not_configured' }, status: :service_unavailable unless stripe_configured?
+
+      session_id = params[:session_id]
+      return render json: { error: 'session_id_required' }, status: :bad_request if session_id.blank?
+
+      publication = find_publication_category(params[:slug])
+      raise Discourse::NotFound unless publication
+
+      set_stripe_api_key
+
+      begin
+        session = ::Stripe::Checkout::Session.retrieve(session_id)
+
+        # Verify the session is completed
+        unless session.status == 'complete'
+          return render json: { error: 'checkout_not_complete', status: session.status }, status: :bad_request
+        end
+
+        # Verify this session belongs to the current user
+        unless session.customer_email == current_user.email
+          Rails.logger.warn("[Bookclub] User #{current_user.id} attempted to verify session belonging to #{session.customer_email}")
+          return render json: { error: 'session_mismatch' }, status: :forbidden
+        end
+
+        # Verify the session is for this publication
+        session_pub_id = session.metadata['publication_id']&.to_i
+        unless session_pub_id == publication.id
+          return render json: { error: 'publication_mismatch' }, status: :bad_request
+        end
+
+        # Check if user already has access (webhook might have already processed this)
+        if guardian.can_access_publication?(publication)
+          return render json: { success: true, message: 'already_has_access', has_access: true }
+        end
+
+        # Grant access directly by adding user to the access group
+        pricing_config = publication.custom_fields[PRICING_CONFIG]
+        access_group_name = pricing_config&.dig('access_group')
+
+        unless access_group_name.present?
+          # Try to use the default group naming convention
+          pub_slug = publication.custom_fields[PUBLICATION_SLUG] || publication.slug
+          access_group_name = "#{pub_slug}_readers"
+        end
+
+        group = Group.find_by(name: access_group_name)
+        unless group
+          # Auto-create the access group
+          Rails.logger.info("[Bookclub] Creating access group '#{access_group_name}' for publication #{publication.id}")
+          group = Group.create!(
+            name: access_group_name,
+            visibility_level: Group.visibility_levels[:members],
+            primary_group: false,
+            title: "#{publication.name} Readers",
+            automatic: false
+          )
+        end
+
+        # Determine purchase type
+        purchase_type = session.subscription.present? ? 'subscription' : 'one_time'
+
+        if group.add(current_user)
+          Rails.logger.info("[Bookclub] Granted access to publication #{publication.id} for user #{current_user.id} via group #{group.name} (#{purchase_type})")
+
+          # Store subscription metadata
+          metadata = current_user.custom_fields[SUBSCRIPTION_METADATA] || {}
+          pub_slug = publication.custom_fields[PUBLICATION_SLUG] || publication.slug
+          metadata[pub_slug] = {
+            'subscription_id' => session.subscription,
+            'status' => 'active',
+            'purchase_type' => purchase_type,
+            'granted_at' => Time.current.iso8601
+          }
+          current_user.custom_fields[SUBSCRIPTION_METADATA] = metadata
+          current_user.save_custom_fields
+
+          render json: { success: true, message: 'access_granted', has_access: true }
+        else
+          Rails.logger.error("[Bookclub] Failed to add user #{current_user.id} to group #{group.name}")
+          render json: { error: 'grant_failed', message: 'Could not add to access group' }, status: :unprocessable_entity
+        end
+      rescue ::Stripe::StripeError => e
+        Rails.logger.error("[Bookclub] Stripe error verifying checkout: #{e.message}")
+        render json: { error: 'stripe_error', message: e.message }, status: :unprocessable_entity
+      end
+    end
+
     def cancelled
       publication = find_publication_category(params[:slug])
       raise Discourse::NotFound unless publication
@@ -233,7 +324,7 @@ module Bookclub
     # Validates that a price_id belongs to this publication's configured Stripe product
     # Prevents users from purchasing unrelated prices via crafted requests
     def price_belongs_to_publication?(price_id, publication)
-      stripe_product_id = publication.custom_fields['bookclub_stripe_product_id']
+      stripe_product_id = publication.custom_fields[STRIPE_PRODUCT_ID]
       return false if stripe_product_id.blank?
 
       set_stripe_api_key
@@ -250,12 +341,17 @@ module Bookclub
     def create_stripe_checkout_session(price_id:, publication:, success_url:, cancel_url:)
       set_stripe_api_key
 
+      # Append session_id to success URL for verification after checkout
+      # Stripe replaces {CHECKOUT_SESSION_ID} with the actual session ID on redirect
+      separator = success_url.include?('?') ? '&' : '?'
+      success_url_with_session = "#{success_url}#{separator}checkout_session_id={CHECKOUT_SESSION_ID}"
+
       ::Stripe::Checkout::Session.create(
         {
           mode: determine_checkout_mode(price_id),
           customer_email: current_user.email,
           line_items: [{ price: price_id, quantity: 1 }],
-          success_url: success_url,
+          success_url: success_url_with_session,
           cancel_url: cancel_url,
           metadata: {
             user_id: current_user.id,

@@ -95,6 +95,36 @@ html[data-theme="dark"],
   --bookclub-font-size-reading: 1.375rem;
 }
 
+// Button consistency fix - prevent size change on hover
+// Discourse buttons can have border changes on hover that cause layout shift
+.bookclub-page,
+.bookclub-library,
+.bookclub-publication-view {
+  .btn {
+    // Ensure consistent border at all states to prevent grow on hover
+    border: 1px solid transparent;
+    box-sizing: border-box;
+
+    &.btn-primary {
+      border-color: transparent;
+
+      &:hover,
+      &:focus {
+        border-color: transparent;
+      }
+    }
+
+    &.btn-default {
+      border-color: var(--primary-low);
+
+      &:hover,
+      &:focus {
+        border-color: var(--primary-low);
+      }
+    }
+  }
+}
+
 // Library page styles
 .bookclub-library {
   max-width: 1200px;
@@ -1884,6 +1914,17 @@ html[data-theme="dark"],
         height: 0.875em;
       }
     }
+
+    &--unlocked {
+      display: flex;
+      align-items: center;
+      color: var(--bookclub-text-soft);
+
+      .d-icon {
+        width: 0.875em;
+        height: 0.875em;
+      }
+    }
   }
 
   &__toc-empty {
@@ -3543,6 +3584,575 @@ body.bookclub-page {
         background: none;
         padding: 0;
       }
+    }
+  }
+}
+
+// Publication pricing settings
+.bookclub-publication-pricing {
+  .bookclub-settings-section {
+    &__title {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 0.5rem;
+      font-size: var(--font-up-1);
+    }
+
+    &__description {
+      color: var(--primary-medium);
+      margin-bottom: 1.5rem;
+    }
+  }
+
+  .bookclub-settings-loading,
+  .bookclub-settings-error,
+  .bookclub-settings-success,
+  .bookclub-settings-warning {
+    padding: 0.75rem 1rem;
+    border-radius: var(--d-border-radius);
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+
+    .d-icon {
+      flex-shrink: 0;
+    }
+  }
+
+  .bookclub-settings-loading {
+    background: var(--primary-very-low);
+    color: var(--primary-medium);
+
+    .spinner {
+      animation: spin 1s linear infinite;
+    }
+  }
+
+  .bookclub-settings-error {
+    background: var(--danger-low);
+    color: var(--danger);
+  }
+
+  .bookclub-settings-success {
+    background: var(--success-low);
+    color: var(--success);
+  }
+
+  .bookclub-settings-warning {
+    background: var(--highlight-low);
+    color: var(--highlight-medium);
+  }
+
+  .bookclub-input--small {
+    width: 150px;
+  }
+
+  .bookclub-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 500;
+    cursor: pointer;
+
+    input[type="checkbox"] {
+      margin: 0;
+      cursor: pointer;
+    }
+  }
+
+  .bookclub-pricing-option {
+    border: 1px solid var(--primary-low);
+    border-radius: var(--d-border-radius);
+    padding: 1rem;
+    margin-bottom: 1rem;
+
+    legend {
+      font-weight: 600;
+      padding: 0 0.5rem;
+    }
+  }
+
+  .bookclub-pricing-stripe-section {
+    margin: 1.5rem 0;
+    padding: 1rem;
+    background: var(--primary-very-low);
+    border-radius: var(--d-border-radius);
+
+    h4 {
+      margin: 0 0 0.75rem 0;
+      font-size: var(--font-0);
+    }
+
+    h5 {
+      margin: 1rem 0 0.5rem 0;
+      font-size: var(--font-down-1);
+      font-weight: 600;
+    }
+  }
+
+  .bookclub-pricing-stripe-prices {
+    margin-top: 1rem;
+  }
+
+  .bookclub-pricing-price-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  .bookclub-pricing-price-item {
+    padding: 0.75rem;
+    border-bottom: 1px solid var(--primary-low);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+
+    &:last-child {
+      border-bottom: none;
+    }
+
+    .bookclub-pricing-price-info {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+      flex: 1;
+
+      strong {
+        font-weight: 600;
+      }
+
+      .bookclub-pricing-price-amount {
+        font-size: var(--font-down-1);
+        color: var(--primary-medium);
+      }
+    }
+
+    .btn-small {
+      padding: 0.25rem 0.75rem;
+      font-size: var(--font-down-1);
+      white-space: nowrap;
+    }
+  }
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+// =============================================================================
+// Checkout verification styles
+// =============================================================================
+.bookclub-checkout-verify {
+  max-width: 500px;
+  margin: 6rem auto;
+  padding: 3rem 2rem;
+  text-align: center;
+  background: var(--secondary);
+  border-radius: var(--d-border-radius);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+
+  .spinner-container {
+    margin-bottom: 1.5rem;
+
+    .d-icon {
+      font-size: 3rem;
+      color: var(--tertiary);
+    }
+  }
+
+  .success-icon,
+  .error-icon {
+    width: 64px;
+    height: 64px;
+    margin: 0 auto 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+
+    .d-icon {
+      font-size: 2rem;
+    }
+  }
+
+  .success-icon {
+    background: var(--success-low);
+
+    .d-icon {
+      color: var(--success);
+    }
+  }
+
+  .error-icon {
+    background: var(--danger-low);
+
+    .d-icon {
+      color: var(--danger);
+    }
+  }
+
+  h2 {
+    margin: 0 0 0.75rem;
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--primary);
+  }
+
+  p {
+    margin: 0 0 0.5rem;
+    color: var(--primary-medium);
+    line-height: 1.5;
+  }
+
+  .redirecting {
+    margin-top: 1rem;
+    font-size: 0.875rem;
+    color: var(--primary-low-mid);
+  }
+
+  .error-details {
+    margin-top: 1rem;
+    padding: 0.75rem 1rem;
+    background: var(--danger-very-low);
+    border-radius: var(--d-border-radius);
+    font-size: 0.875rem;
+    color: var(--danger);
+  }
+
+  .error-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    margin-top: 1.5rem;
+  }
+}
+
+// =============================================================================
+// Paywall display (inline) styles
+// =============================================================================
+.bookclub-paywall-display {
+  max-width: 800px;
+  margin: 4rem auto;
+  padding: 2rem;
+  background: var(--secondary);
+  border-radius: var(--d-border-radius);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+
+  @media (max-width: 768px) {
+    margin: 2rem 1rem;
+    padding: 1.5rem;
+  }
+
+  .paywall-content {
+    padding: 0;
+  }
+
+  .paywall-header {
+    text-align: center;
+    margin-bottom: 2rem;
+
+    h2 {
+      margin: 0 0 0.5rem;
+      font-size: 1.75rem;
+    }
+
+    .preview-status {
+      color: var(--primary-medium);
+      margin: 0;
+      font-size: 1rem;
+    }
+  }
+
+  .paywall-options {
+    display: flex;
+    gap: 1.5rem;
+    align-items: stretch;
+
+    @media (max-width: 600px) {
+      flex-direction: column;
+    }
+  }
+
+  .paywall-option {
+    flex: 1;
+    padding: 1.5rem;
+    border: 2px solid var(--primary-low);
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+    background: var(--secondary);
+
+    &.full-width {
+      max-width: 400px;
+      margin: 0 auto;
+    }
+
+    &:hover {
+      border-color: var(--primary-medium);
+    }
+
+    .option-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 0.75rem;
+
+      h3 {
+        margin: 0;
+        font-size: 1.1rem;
+      }
+
+      .price {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: var(--tertiary);
+      }
+    }
+
+    .option-description {
+      color: var(--primary-medium);
+      font-size: 0.9rem;
+      margin-bottom: 1rem;
+    }
+
+    .features {
+      list-style: none;
+      padding: 0;
+      margin: 0 0 1.5rem;
+      flex-grow: 1;
+
+      li {
+        padding: 0.35rem 0;
+        padding-left: 1.5rem;
+        position: relative;
+        font-size: 0.9rem;
+
+        &::before {
+          content: "✓";
+          position: absolute;
+          left: 0;
+          color: var(--success);
+          font-weight: bold;
+        }
+      }
+    }
+
+    .btn-large {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      font-size: 1rem;
+    }
+  }
+
+  .option-divider {
+    display: flex;
+    align-items: center;
+    padding: 0 0.5rem;
+
+    span {
+      color: var(--primary-medium);
+      font-size: 0.9rem;
+      text-transform: uppercase;
+    }
+
+    @media (max-width: 600px) {
+      padding: 1rem 0;
+
+      &::before,
+      &::after {
+        content: "";
+        flex: 1;
+        height: 1px;
+        background: var(--primary-low);
+      }
+
+      &::before {
+        margin-right: 1rem;
+      }
+
+      &::after {
+        margin-left: 1rem;
+      }
+    }
+  }
+
+  .login-prompt {
+    text-align: center;
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--primary-low);
+    color: var(--primary-medium);
+
+    a {
+      color: var(--tertiary);
+      margin-left: 0.25rem;
+      cursor: pointer;
+      text-decoration: underline;
+
+      &:hover {
+        color: var(--tertiary-hover);
+      }
+    }
+  }
+}
+
+// =============================================================================
+// Paywall modal styles
+// =============================================================================
+.bookclub-paywall-modal {
+  .modal-inner-container {
+    max-width: 600px;
+  }
+
+  .paywall-content {
+    padding: 1rem 0;
+  }
+
+  .paywall-header {
+    text-align: center;
+    margin-bottom: 2rem;
+
+    h2 {
+      margin: 0 0 0.5rem;
+      font-size: 1.5rem;
+    }
+
+    .preview-status {
+      color: var(--primary-medium);
+      margin: 0;
+    }
+  }
+
+  .paywall-options {
+    display: flex;
+    gap: 1.5rem;
+    align-items: stretch;
+
+    @media (max-width: 600px) {
+      flex-direction: column;
+    }
+  }
+
+  .paywall-option {
+    flex: 1;
+    padding: 1.5rem;
+    border: 2px solid var(--primary-low);
+    border-radius: 8px;
+    display: flex;
+    flex-direction: column;
+
+    &.full-width {
+      max-width: 400px;
+      margin: 0 auto;
+    }
+
+    &:hover {
+      border-color: var(--primary-medium);
+    }
+
+    .option-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      margin-bottom: 0.75rem;
+
+      h3 {
+        margin: 0;
+        font-size: 1.1rem;
+      }
+
+      .price {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: var(--tertiary);
+      }
+    }
+
+    .option-description {
+      color: var(--primary-medium);
+      font-size: 0.9rem;
+      margin-bottom: 1rem;
+    }
+
+    .features {
+      list-style: none;
+      padding: 0;
+      margin: 0 0 1.5rem;
+      flex-grow: 1;
+
+      li {
+        padding: 0.35rem 0;
+        padding-left: 1.5rem;
+        position: relative;
+        font-size: 0.9rem;
+
+        &::before {
+          content: "✓";
+          position: absolute;
+          left: 0;
+          color: var(--success);
+          font-weight: bold;
+        }
+      }
+    }
+
+    .btn-large {
+      width: 100%;
+      padding: 0.75rem 1rem;
+      font-size: 1rem;
+    }
+  }
+
+  .option-divider {
+    display: flex;
+    align-items: center;
+    padding: 0 0.5rem;
+
+    span {
+      color: var(--primary-medium);
+      font-size: 0.9rem;
+      text-transform: uppercase;
+    }
+
+    @media (max-width: 600px) {
+      padding: 1rem 0;
+
+      &::before,
+      &::after {
+        content: "";
+        flex: 1;
+        height: 1px;
+        background: var(--primary-low);
+      }
+
+      &::before {
+        margin-right: 1rem;
+      }
+
+      &::after {
+        margin-left: 1rem;
+      }
+    }
+  }
+
+  .login-prompt {
+    text-align: center;
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--primary-low);
+    color: var(--primary-medium);
+
+    a {
+      color: var(--tertiary);
+      margin-left: 0.25rem;
     }
   }
 }

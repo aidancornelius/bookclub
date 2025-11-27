@@ -48,7 +48,7 @@ module Bookclub
       # This handles the case where bookclub_stripe_product_id is set on the publication but
       # bookclub_publication_id is not set in Stripe product metadata
       publication_field = CategoryCustomField.find_by(
-        name: 'bookclub_stripe_product_id',
+        name: Bookclub::STRIPE_PRODUCT_ID,
         value: params.product_id
       )
 
@@ -85,22 +85,20 @@ module Bookclub
     def grant_access(user, publication, subscription_data)
       return unless publication
 
-      publication.custom_fields[Bookclub::PUBLICATION_ACCESS_TIERS] || {}
-      tier_group_name = extract_tier_from_subscription(subscription_data)
-
-      return unless tier_group_name
-
-      group = Group.find_by(name: tier_group_name)
+      group = find_access_group(publication, subscription_data)
       return unless group
+
+      # Determine purchase type from subscription data
+      purchase_type = determine_purchase_type(subscription_data)
 
       if group.add(user)
         Rails.logger.info(
-          "[Bookclub] Granted access to publication #{publication.id} for user #{user.id} via group #{group.name}"
+          "[Bookclub] Granted access to publication #{publication.id} for user #{user.id} via group #{group.name} (#{purchase_type})"
         )
 
         notify_user_access_granted(user, publication, group)
 
-        store_subscription_metadata(user, publication, subscription_data)
+        store_subscription_metadata(user, publication, subscription_data, purchase_type)
       else
         Rails.logger.warn("[Bookclub] Failed to add user #{user.id} to group #{group.name}")
       end
@@ -109,12 +107,19 @@ module Bookclub
     def revoke_access(user, publication, subscription_data)
       return unless publication
 
-      publication.custom_fields[Bookclub::PUBLICATION_ACCESS_TIERS] || {}
-      tier_group_name = extract_tier_from_subscription(subscription_data)
+      # Check if this was a one-time purchase - don't revoke those
+      pub_slug = publication.custom_fields[Bookclub::PUBLICATION_SLUG] || publication.slug
+      metadata = user.custom_fields[Bookclub::SUBSCRIPTION_METADATA] || {}
+      pub_metadata = metadata[pub_slug]
 
-      return unless tier_group_name
+      if pub_metadata && pub_metadata['purchase_type'] == 'one_time'
+        Rails.logger.info(
+          "[Bookclub] Skipping access revocation for one-time purchase: publication #{publication.id}, user #{user.id}"
+        )
+        return
+      end
 
-      group = Group.find_by(name: tier_group_name)
+      group = find_access_group(publication, subscription_data)
       return unless group
 
       if group.remove(user)
@@ -135,6 +140,36 @@ module Bookclub
       return nil unless plan
 
       plan.dig(:metadata, :group_name)
+    end
+
+    def find_access_group(publication, subscription_data)
+      # First, check the new pricing config for access_group
+      pricing_config = publication.custom_fields[Bookclub::PRICING_CONFIG]
+      # Handle both boolean and string values for 'enabled' (form data sends strings)
+      pricing_enabled = pricing_config.is_a?(Hash) &&
+        [true, 'true', 't'].include?(pricing_config['enabled'])
+      if pricing_enabled && pricing_config['access_group'].present?
+        group = Group.find_by(name: pricing_config['access_group'])
+        return group if group
+      end
+
+      # Fall back to legacy tier-based access
+      tier_group_name = extract_tier_from_subscription(subscription_data)
+      return nil unless tier_group_name
+
+      Group.find_by(name: tier_group_name)
+    end
+
+    def determine_purchase_type(subscription_data)
+      # If there's no subscription ID or it's from a one-time checkout, it's a one-time purchase
+      # Stripe subscriptions have IDs starting with "sub_", one-time checkouts don't have subscription IDs
+      subscription_id = subscription_data[:id]
+
+      if subscription_id.blank? || !subscription_id.to_s.start_with?('sub_')
+        'one_time'
+      else
+        'subscription'
+      end
     end
 
     def notify_user_access_granted(user, publication, group)
@@ -170,14 +205,15 @@ module Bookclub
       Rails.logger.error("[Bookclub] Unexpected error sending access revoked notification: #{e.class.name} - #{e.message}")
     end
 
-    def store_subscription_metadata(user, publication, subscription_data)
+    def store_subscription_metadata(user, publication, subscription_data, purchase_type = 'subscription')
       metadata = user.custom_fields[Bookclub::SUBSCRIPTION_METADATA] || {}
       # Use publication slug as the key for consistency with pricing_controller
       pub_slug = publication.custom_fields[Bookclub::PUBLICATION_SLUG] || publication.slug
       metadata[pub_slug] = {
-        subscription_id: subscription_data[:id],
-        status: subscription_data[:status],
-        granted_at: Time.current.iso8601
+        'subscription_id' => subscription_data[:id],
+        'status' => subscription_data[:status],
+        'purchase_type' => purchase_type,
+        'granted_at' => Time.current.iso8601
       }
       user.custom_fields[Bookclub::SUBSCRIPTION_METADATA] = metadata
       user.save_custom_fields
@@ -195,12 +231,7 @@ module Bookclub
     def handle_payment_failed(user, publication, subscription_data)
       return unless publication
 
-      publication.custom_fields[Bookclub::PUBLICATION_ACCESS_TIERS] || {}
-      tier_group_name = extract_tier_from_subscription(subscription_data)
-
-      return unless tier_group_name
-
-      group = Group.find_by(name: tier_group_name)
+      group = find_access_group(publication, subscription_data)
       return unless group
 
       # Update subscription metadata to reflect payment failure
@@ -226,12 +257,7 @@ module Bookclub
     def handle_refund(user, publication, subscription_data)
       return unless publication
 
-      publication.custom_fields[Bookclub::PUBLICATION_ACCESS_TIERS] || {}
-      tier_group_name = extract_tier_from_subscription(subscription_data)
-
-      return unless tier_group_name
-
-      group = Group.find_by(name: tier_group_name)
+      group = find_access_group(publication, subscription_data)
       return unless group
 
       # Revoke access for full refunds
